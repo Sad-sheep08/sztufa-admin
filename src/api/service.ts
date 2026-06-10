@@ -6,11 +6,31 @@ const getAuthToken = (): string | null => {
   return localStorage.getItem('token') || null;
 };
 
+const getTokenExpiry = (): number | null => {
+  const expiry = localStorage.getItem('tokenExpiry');
+  return expiry ? parseInt(expiry, 10) : null;
+};
+
+const isTokenExpired = (): boolean => {
+  const expiry = getTokenExpiry();
+  if (!expiry) return true;
+  return Date.now() > expiry;
+};
+
+const handleAuthError = (response: Response): void => {
+  if (response.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('tokenExpiry');
+    localStorage.removeItem('user');
+    window.location.href = '/login?expired=true';
+  }
+};
+
 const createHeaders = (multipart = false): Headers => {
   const headers = new Headers();
   const token = getAuthToken();
   
-  if (token) {
+  if (token && !isTokenExpired()) {
     headers.set('Authorization', `Bearer ${token}`);
   }
   
@@ -22,6 +42,10 @@ const createHeaders = (multipart = false): Headers => {
 };
 
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+  if (response.status === 401) {
+    handleAuthError(response);
+  }
+  
   try {
     const data = await response.json();
     
@@ -129,19 +153,25 @@ export const matchApi = {
 
 export const authApi = {
   login: async (username: string, password: string): Promise<ApiResponse<{ token: string; user: unknown }>> => {
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    
     const response = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: createHeaders(),
+      headers,
       body: JSON.stringify({ username, password }),
     });
     return handleResponse<{ token: string; user: unknown }>(response);
   },
 
-  register: async (username: string, password: string): Promise<ApiResponse<{ user: unknown }>> => {
+  register: async (username: string, email: string, password: string): Promise<ApiResponse<{ user: unknown }>> => {
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
-      headers: createHeaders(),
-      body: JSON.stringify({ username, password }),
+      headers,
+      body: JSON.stringify({ username, email, password }),
     });
     return handleResponse<{ user: unknown }>(response);
   },
