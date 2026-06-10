@@ -5,7 +5,7 @@
   "scripts": {
     "start": "webpack serve",
     "build": "webpack --mode production",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --config jest.config.js"
   },
   "keywords": [],
   "author": "",
@@ -28,10 +28,13 @@
     "@babel/preset-env": "^7.29.7",
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
+    "@types/jest": "^30.0.0",
     "babel-loader": "^10.1.1",
     "css-loader": "^7.1.4",
     "html-webpack-plugin": "^5.6.7",
+    "jest": "^30.4.2",
     "style-loader": "^4.0.0",
+    "ts-jest": "^29.4.11",
     "ts-loader": "^9.6.0",
     "webpack": "^5.107.2",
     "webpack-cli": "^7.0.3",

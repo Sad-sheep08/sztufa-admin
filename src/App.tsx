@@ -9,8 +9,8 @@ import TeamManagementPage from './pages/TeamManagementPage';
 const navItems = [
   { path: '/', label: '球队信息录入', icon: Trophy },
   { path: '/teams', label: '比赛信息录入', icon: Calendar },
-  { path: '/schedule', label: '比赛日程', icon: Calendar },
-  { path: '/statistics', label: '成绩统计', icon: BarChart3 },
+  { path: '/schedule', label: '球队信息管理', icon: Users },
+  { path: '/statistics', label: '比赛信息管理', icon: BarChart3 },
 ];
 
 const App: React.FC = () => {

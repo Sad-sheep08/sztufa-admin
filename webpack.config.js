@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   entry: './src/index.tsx',
@@ -28,13 +29,16 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
     }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /\.test\.ts$/,
+    }),
   ],
   devServer: {
     static: {
       directory: path.join(__dirname, 'public'),
     },
     compress: true,
-    port: 3000,
+    port: 3001,
     open: true,
     hot: true,
   },

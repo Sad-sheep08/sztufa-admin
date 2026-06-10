@@ -86,6 +86,54 @@ const TeamForm: React.FC<TeamFormProps> = ({ data, onChange }) => {
 
       <div className="form-row">
         <div className="form-group">
+          <label>所属联赛</label>
+          <select
+            value={data.league}
+            onChange={(e) => handleFieldChange('league', e.target.value)}
+            className="form-select"
+          >
+            <option value="">请选择联赛</option>
+            <option value="中超联赛">中超联赛</option>
+            <option value="中甲联赛">中甲联赛</option>
+            <option value="足协杯">足协杯</option>
+            <option value="校园联赛">校园联赛</option>
+            <option value="友谊赛">友谊赛</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>成立时间</label>
+          <input
+            type="date"
+            value={data.foundedDate}
+            onChange={(e) => handleFieldChange('foundedDate', e.target.value)}
+            className="form-input"
+          />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>所在城市</label>
+          <input
+            type="text"
+            value={data.homeCity}
+            onChange={(e) => handleFieldChange('homeCity', e.target.value)}
+            placeholder="请输入球队所在城市"
+          />
+        </div>
+        <div className="form-group">
+          <label>主场场馆</label>
+          <input
+            type="text"
+            value={data.homeStadium}
+            onChange={(e) => handleFieldChange('homeStadium', e.target.value)}
+            placeholder="请输入主场场馆名称"
+          />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
           <label>主教练姓名 *</label>
           <input
             type="text"

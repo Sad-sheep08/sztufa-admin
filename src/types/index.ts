@@ -20,6 +20,10 @@ export interface Team {
   homeJersey: string | null;
   awayJersey: string | null;
   players: Player[];
+  league?: string;
+  foundedDate?: string;
+  homeStadium?: string;
+  homeCity?: string;
 }
 
 export interface TeamFormData {
@@ -34,6 +38,10 @@ export interface TeamFormData {
   teamLogo: File | null;
   homeJersey: File | null;
   awayJersey: File | null;
+  league: string;
+  foundedDate: string;
+  homeStadium: string;
+  homeCity: string;
 }
 
 export interface PlayerFormData {
@@ -57,6 +65,12 @@ export interface Match {
   awayTeamScore: number;
   homeTeamGoals: Goal[];
   awayTeamGoals: Goal[];
+  homeTeamId?: string;
+  awayTeamId?: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  location?: string;
+  status?: 'pending' | 'completed' | 'cancelled';
 }
 
 export interface MatchFormData {
@@ -68,4 +82,7 @@ export interface MatchFormData {
   awayTeamScore: string;
   homeTeamGoals: Goal[];
   awayTeamGoals: Goal[];
+  homeTeamId: string;
+  awayTeamId: string;
+  location: string;
 }

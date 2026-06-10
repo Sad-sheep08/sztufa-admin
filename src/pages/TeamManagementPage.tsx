@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Calendar, Plus, Trash2, Save, CheckCircle } from 'lucide-react';
+import { Calendar, Plus, Trash2, Save, CheckCircle, Loader2, AlertCircle, MapPin } from 'lucide-react';
 import { Goal, MatchFormData, Match } from '../types';
 import { generateId } from '../utils';
+import { matchApi, teamApi } from '../api/service';
+import { MatchDTO, GoalDTO, TeamDTO } from '../api/types';
 
 const TeamManagementPage: React.FC = () => {
   const [formData, setFormData] = useState<MatchFormData>({
@@ -13,10 +15,32 @@ const TeamManagementPage: React.FC = () => {
     awayTeamScore: '',
     homeTeamGoals: [],
     awayTeamGoals: [],
+    homeTeamId: '',
+    awayTeamId: '',
+    location: '',
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVerifyingTeams, setIsVerifyingTeams] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [savedMatch, setSavedMatch] = useState<Match | null>(null);
+  const [availableTeams, setAvailableTeams] = useState<TeamDTO[]>([]);
+
+  const loadTeams = async () => {
+    try {
+      const response = await teamApi.getAll();
+      if (response.success) {
+        setAvailableTeams(response.data.teams);
+      }
+    } catch (err) {
+      console.error('加载球队列表失败:', err);
+    }
+  };
+
+  React.useEffect(() => {
+    loadTeams();
+  }, []);
 
   const addGoal = (team: 'home' | 'away') => {
     const newGoal: Goal = {
@@ -35,6 +59,7 @@ const TeamManagementPage: React.FC = () => {
         awayTeamGoals: [...formData.awayTeamGoals, newGoal],
       });
     }
+    setError(null);
   };
 
   const removeGoal = (team: 'home' | 'away', index: number) => {
@@ -49,6 +74,7 @@ const TeamManagementPage: React.FC = () => {
         awayTeamGoals: formData.awayTeamGoals.filter((_, i) => i !== index),
       });
     }
+    setError(null);
   };
 
   const updateGoal = (team: 'home' | 'away', index: number, field: keyof Goal, value: string) => {
@@ -61,34 +87,259 @@ const TeamManagementPage: React.FC = () => {
       updatedGoals[index] = { ...updatedGoals[index], [field]: value };
       setFormData({ ...formData, awayTeamGoals: updatedGoals });
     }
+    setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateTeamId = async (teamId: string): Promise<boolean> => {
+    if (!teamId.trim()) {
+      return true;
+    }
+    try {
+      const response = await teamApi.getById(teamId);
+      return response.success;
+    } catch {
+      return false;
+    }
+  };
+
+  const validateForm = (): boolean => {
+    if (!formData.matchName.trim()) {
+      setError('请选择比赛名称');
+      return false;
+    }
+    if (!formData.matchTime.trim()) {
+      setError('请选择比赛时间');
+      return false;
+    }
+    if (!formData.homeTeamName.trim()) {
+      setError('请输入主队名称');
+      return false;
+    }
+    if (!formData.awayTeamName.trim()) {
+      setError('请输入客队名称');
+      return false;
+    }
+    if (formData.homeTeamName === formData.awayTeamName) {
+      setError('主队和客队不能相同');
+      return false;
+    }
+    if (!formData.location.trim()) {
+      setError('请输入比赛地点');
+      return false;
+    }
+    if (!formData.homeTeamScore.trim()) {
+      setError('请输入主队得分');
+      return false;
+    }
+    if (!formData.awayTeamScore.trim()) {
+      setError('请输入客队得分');
+      return false;
+    }
+
+    const homeScore = parseInt(formData.homeTeamScore);
+    const awayScore = parseInt(formData.awayTeamScore);
+
+    if (isNaN(homeScore) || homeScore < 0) {
+      setError('主队得分必须是非负整数');
+      return false;
+    }
+    if (isNaN(awayScore) || awayScore < 0) {
+      setError('客队得分必须是非负整数');
+      return false;
+    }
+
+    const homeGoalsCount = formData.homeTeamGoals.length;
+    const awayGoalsCount = formData.awayTeamGoals.length;
+
+    if (homeScore !== homeGoalsCount) {
+      setError(`主队进球数(${homeGoalsCount})与得分(${homeScore})不一致`);
+      return false;
+    }
+    if (awayScore !== awayGoalsCount) {
+      setError(`客队进球数(${awayGoalsCount})与得分(${awayScore})不一致`);
+      return false;
+    }
+
+    for (const goal of formData.homeTeamGoals) {
+      if (!goal.playerName.trim()) {
+        setError('请填写所有主队进球球员姓名');
+        return false;
+      }
+      if (!goal.goalTime.trim()) {
+        setError('请填写所有主队进球时间');
+        return false;
+      }
+      if (!goal.jerseyNumber.trim()) {
+        setError('请填写所有主队进球球员球衣号码');
+        return false;
+      }
+    }
+
+    for (const goal of formData.awayTeamGoals) {
+      if (!goal.playerName.trim()) {
+        setError('请填写所有客队进球球员姓名');
+        return false;
+      }
+      if (!goal.goalTime.trim()) {
+        setError('请填写所有客队进球时间');
+        return false;
+      }
+      if (!goal.jerseyNumber.trim()) {
+        setError('请填写所有客队进球球员球衣号码');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const match: Match = {
-      id: generateId(),
-      matchName: formData.matchName,
-      matchTime: formData.matchTime,
-      homeTeamScore: parseInt(formData.homeTeamScore),
-      awayTeamScore: parseInt(formData.awayTeamScore),
-      homeTeamGoals: formData.homeTeamGoals,
-      awayTeamGoals: formData.awayTeamGoals,
-    };
+    setError(null);
 
-    setSavedMatch(match);
-    setIsSaved(true);
+    if (!validateForm()) {
+      return;
+    }
 
-    setTimeout(() => {
-      setIsSaved(false);
-    }, 3000);
+    setIsLoading(true);
 
-    console.log('比赛信息已保存:', match);
+    try {
+      if (formData.homeTeamId.trim()) {
+        setIsVerifyingTeams(true);
+        const homeTeamValid = await validateTeamId(formData.homeTeamId);
+        if (!homeTeamValid) {
+          setError(`主队ID ${formData.homeTeamId} 不存在，请检查或使用球队名称`);
+          setIsLoading(false);
+          setIsVerifyingTeams(false);
+          return;
+        }
+      }
+
+      if (formData.awayTeamId.trim()) {
+        const awayTeamValid = await validateTeamId(formData.awayTeamId);
+        if (!awayTeamValid) {
+          setError(`客队ID ${formData.awayTeamId} 不存在，请检查或使用球队名称`);
+          setIsLoading(false);
+          setIsVerifyingTeams(false);
+          return;
+        }
+      }
+      setIsVerifyingTeams(false);
+
+      const homeGoalsDTO: GoalDTO[] = formData.homeTeamGoals.map((g) => ({
+        playerName: g.playerName,
+        goalTime: g.goalTime,
+        jerseyNumber: g.jerseyNumber,
+      }));
+
+      const awayGoalsDTO: GoalDTO[] = formData.awayTeamGoals.map((g) => ({
+        playerName: g.playerName,
+        goalTime: g.goalTime,
+        jerseyNumber: g.jerseyNumber,
+      }));
+
+      const matchDTO: MatchDTO = {
+        matchName: formData.matchName,
+        matchTime: formData.matchTime,
+        homeTeamName: formData.homeTeamName,
+        awayTeamName: formData.awayTeamName,
+        homeTeamScore: parseInt(formData.homeTeamScore),
+        awayTeamScore: parseInt(formData.awayTeamScore),
+        homeTeamGoals: homeGoalsDTO,
+        awayTeamGoals: awayGoalsDTO,
+        homeTeamId: formData.homeTeamId || undefined,
+        awayTeamId: formData.awayTeamId || undefined,
+        location: formData.location || undefined,
+      };
+
+      console.log('正在提交比赛数据到后端:', matchDTO);
+      const response = await matchApi.create(matchDTO);
+
+      if (response.success) {
+        const savedData = response.data;
+        const match: Match = {
+          id: savedData.id || generateId(),
+          matchName: savedData.matchName,
+          matchTime: savedData.matchTime,
+          homeTeamScore: savedData.homeTeamScore,
+          awayTeamScore: savedData.awayTeamScore,
+          homeTeamGoals: savedData.homeTeamGoals.map((g) => ({
+            playerName: g.playerName,
+            goalTime: g.goalTime,
+            jerseyNumber: g.jerseyNumber,
+          })),
+          awayTeamGoals: savedData.awayTeamGoals.map((g) => ({
+            playerName: g.playerName,
+            goalTime: g.goalTime,
+            jerseyNumber: g.jerseyNumber,
+          })),
+          homeTeamId: savedData.homeTeamId,
+          awayTeamId: savedData.awayTeamId,
+          homeTeamName: savedData.homeTeamName,
+          awayTeamName: savedData.awayTeamName,
+          location: savedData.location,
+          status: 'completed',
+        };
+
+        setSavedMatch(match);
+        setIsSaved(true);
+        setError(null);
+
+        setTimeout(() => {
+          setIsSaved(false);
+        }, 3000);
+
+        console.log('比赛信息已成功保存到后端:', match);
+      } else {
+        console.error('后端返回保存失败:', response.message);
+        setError(response.message || '保存失败，后端处理异常');
+      }
+    } catch (err) {
+      console.error('保存比赛信息失败:', err);
+      if (err instanceof Error) {
+        if (err.message.includes('Failed to fetch')) {
+          setError('网络连接失败，请检查网络或稍后重试');
+        } else if (err.message.includes('400')) {
+          setError('请求参数错误，请检查表单数据是否完整');
+        } else if (err.message.includes('401')) {
+          setError('未授权访问，请先登录');
+        } else if (err.message.includes('404')) {
+          setError('关联的球队不存在，请检查球队ID');
+        } else if (err.message.includes('500')) {
+          setError('服务器内部错误，请稍后重试');
+        } else {
+          setError('保存失败: ' + err.message);
+        }
+      } else {
+        setError('保存失败，请稍后重试');
+      }
+    } finally {
+      setIsLoading(false);
+      setIsVerifyingTeams(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    setError(null);
+  };
+
+  const handleTeamSelect = (teamType: 'home' | 'away', team: TeamDTO) => {
+    if (teamType === 'home') {
+      setFormData({
+        ...formData,
+        homeTeamId: team.id || '',
+        homeTeamName: team.teamName,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        awayTeamId: team.id || '',
+        awayTeamName: team.teamName,
+      });
+    }
+    setError(null);
   };
 
   return (
@@ -104,6 +355,13 @@ const TeamManagementPage: React.FC = () => {
       </header>
 
       <main className="page-content">
+        {error && (
+          <div className="error-message">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="form-section">
             <h2 className="form-title">
@@ -143,17 +401,54 @@ const TeamManagementPage: React.FC = () => {
                   required
                 />
               </div>
+
+              <div className="form-group">
+                <label>比赛地点</label>
+                <div className="input-with-icon">
+                  <MapPin size={18} />
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    className="form-input"
+                    placeholder="请输入比赛地点"
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="form-section">
             <h2 className="form-title">
               <span className="icon">🏆</span>
-              比赛比分
+              对阵球队
             </h2>
             <div className="match-score-container">
               <div className="team-column home-team">
                 <div className="team-label">主队</div>
+                <div className="team-select-wrapper">
+                  <select
+                    value={formData.homeTeamId}
+                    onChange={(e) => {
+                      const team = availableTeams.find(t => t.id === e.target.value);
+                      if (team) {
+                        handleTeamSelect('home', team);
+                      } else {
+                        setFormData({ ...formData, homeTeamId: e.target.value });
+                      }
+                    }}
+                    className="form-select team-select"
+                  >
+                    <option value="">选择已有球队</option>
+                    {availableTeams.map((team) => (
+                      <option key={team.id} value={team.id || ''}>
+                        {team.teamName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="team-input-wrapper">
                   <input
                     type="text"
@@ -163,6 +458,16 @@ const TeamManagementPage: React.FC = () => {
                     className="form-input team-name-input"
                     placeholder="主队名称"
                     required
+                  />
+                </div>
+                <div className="team-id-wrapper">
+                  <input
+                    type="text"
+                    name="homeTeamId"
+                    value={formData.homeTeamId}
+                    onChange={handleChange}
+                    className="form-input team-id-input"
+                    placeholder="主队ID（可选）"
                   />
                 </div>
                 <div className="score-input-wrapper">
@@ -187,6 +492,27 @@ const TeamManagementPage: React.FC = () => {
 
               <div className="team-column away-team">
                 <div className="team-label">客队</div>
+                <div className="team-select-wrapper">
+                  <select
+                    value={formData.awayTeamId}
+                    onChange={(e) => {
+                      const team = availableTeams.find(t => t.id === e.target.value);
+                      if (team) {
+                        handleTeamSelect('away', team);
+                      } else {
+                        setFormData({ ...formData, awayTeamId: e.target.value });
+                      }
+                    }}
+                    className="form-select team-select"
+                  >
+                    <option value="">选择已有球队</option>
+                    {availableTeams.map((team) => (
+                      <option key={team.id} value={team.id || ''}>
+                        {team.teamName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="team-input-wrapper">
                   <input
                     type="text"
@@ -196,6 +522,16 @@ const TeamManagementPage: React.FC = () => {
                     className="form-input team-name-input"
                     placeholder="客队名称"
                     required
+                  />
+                </div>
+                <div className="team-id-wrapper">
+                  <input
+                    type="text"
+                    name="awayTeamId"
+                    value={formData.awayTeamId}
+                    onChange={handleChange}
+                    className="form-input team-id-input"
+                    placeholder="客队ID（可选）"
                   />
                 </div>
                 <div className="score-input-wrapper">
@@ -380,15 +716,28 @@ const TeamManagementPage: React.FC = () => {
 
       <footer className="page-footer">
         <div className="footer-actions">
-          <button onClick={handleSubmit} className="save-btn">
-            <Save size={18} />
-            保存比赛信息
+          <button 
+            onClick={handleSubmit} 
+            className="save-btn"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={18} className="loader" />
+                {isVerifyingTeams ? '验证球队信息中...' : '保存中...'}
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                保存比赛信息
+              </>
+            )}
           </button>
         </div>
         {isSaved && (
           <div className="save-success">
             <CheckCircle size={20} />
-            保存成功！
+            保存成功！数据已持久化到数据库
           </div>
         )}
       </footer>
