@@ -5,6 +5,10 @@
   "installCommand": "npm install",
   "routes": [
     {
+      "src": "/(.*\\.(js|css|png|jpg|svg|ico))$",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
