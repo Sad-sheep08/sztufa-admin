@@ -6,7 +6,7 @@ import PlayerList from '../components/PlayerList';
 import ExcelImporter from '../components/ExcelImporter';
 import { Team, TeamFormData, Player } from '../types';
 import { generateId, fileToBase64 } from '../utils';
-import { teamApi } from '../api/service';
+import { teamApi, playerApi } from '../api/service';
 import { TeamDTO, PlayerDTO } from '../api/types';
 
 const TeamInfoPage: React.FC = () => {
@@ -22,10 +22,6 @@ const TeamInfoPage: React.FC = () => {
     teamLogo: null,
     homeJersey: null,
     awayJersey: null,
-    league: '',
-    foundedDate: '',
-    homeStadium: '',
-    homeCity: '',
   });
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -116,6 +112,7 @@ const TeamInfoPage: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // 第一步：将图片转换为Base64
       const teamLogoBase64 = teamFormData.teamLogo
         ? await fileToBase64(teamFormData.teamLogo)
         : null;
@@ -126,14 +123,7 @@ const TeamInfoPage: React.FC = () => {
         ? await fileToBase64(teamFormData.awayJersey)
         : null;
 
-      const playersDTO: PlayerDTO[] = players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        studentId: p.studentId,
-        jerseyNumber: p.jerseyNumber,
-        photo: p.photo,
-      }));
-
+      // 第二步：准备球队数据（不包含players，因为需要先创建球队获取ID）
       const teamDTO: TeamDTO = {
         teamName: teamFormData.teamName,
         teamDoctor: teamFormData.teamDoctor,
@@ -146,57 +136,68 @@ const TeamInfoPage: React.FC = () => {
         teamLogo: teamLogoBase64,
         homeJersey: homeJerseyBase64,
         awayJersey: awayJerseyBase64,
-        players: playersDTO,
-        league: teamFormData.league || undefined,
-        foundedDate: teamFormData.foundedDate || undefined,
-        homeStadium: teamFormData.homeStadium || undefined,
-        homeCity: teamFormData.homeCity || undefined,
       };
 
       console.log('正在提交球队数据到后端:', teamDTO);
-      const response = await teamApi.create(teamDTO);
+      
+      // 第三步：创建球队
+      const savedTeamData = await teamApi.create(teamDTO);
+      const teamId = savedTeamData.id;
 
-      if (response.success) {
-        const savedData = response.data;
-        const team: Team = {
-          id: savedData.id || generateId(),
-          teamName: savedData.teamName,
-          teamDoctor: savedData.teamDoctor,
-          headCoach: savedData.headCoach,
-          teamLeader: savedData.teamLeader,
-          coachPhone: savedData.coachPhone,
-          leaderPhone: savedData.leaderPhone,
-          homeJerseyColor: savedData.homeJerseyColor,
-          awayJerseyColor: savedData.awayJerseyColor,
-          teamLogo: savedData.teamLogo || null,
-          homeJersey: savedData.homeJersey || null,
-          awayJersey: savedData.awayJersey || null,
-          players: savedData.players.map((p) => ({
-            id: p.id || generateId(),
-            name: p.name,
-            studentId: p.studentId,
-            jerseyNumber: p.jerseyNumber,
-            photo: p.photo || null,
-          })),
-          league: savedData.league,
-          foundedDate: savedData.foundedDate,
-          homeStadium: savedData.homeStadium,
-          homeCity: savedData.homeCity,
+      console.log('球队创建成功，球队ID:', teamId);
+
+      // 第四步：为每个球员创建记录
+      const savedPlayers: Player[] = [];
+      for (const player of players) {
+        const playerDTO: PlayerDTO = {
+          name: player.name,
+          studentId: player.studentId,
+          jerseyNumber: player.jerseyNumber,
+          photo: player.photo,
+          teamId: teamId || '',
         };
 
-        setSavedTeam(team);
-        setIsSaved(true);
-        setError(null);
-
-        setTimeout(() => {
-          setIsSaved(false);
-        }, 3000);
-
-        console.log('球队信息已成功保存到后端:', team);
-      } else {
-        console.error('后端返回保存失败:', response.message);
-        setError(response.message || '保存失败，后端处理异常');
+        console.log('正在创建球员:', playerDTO);
+        const savedPlayerData = await playerApi.create(playerDTO);
+        
+        savedPlayers.push({
+          id: savedPlayerData.id || generateId(),
+          name: savedPlayerData.name,
+          studentId: savedPlayerData.studentId,
+          jerseyNumber: savedPlayerData.jerseyNumber,
+          photo: savedPlayerData.photo || null,
+          teamId: savedPlayerData.teamId || '',
+        });
       }
+
+      console.log('所有球员创建成功，共', savedPlayers.length, '名球员');
+
+      // 第五步：构建完整的球队对象
+      const team: Team = {
+        id: teamId || generateId(),
+        teamName: savedTeamData.teamName,
+        teamDoctor: savedTeamData.teamDoctor,
+        headCoach: savedTeamData.headCoach,
+        teamLeader: savedTeamData.teamLeader,
+        coachPhone: savedTeamData.coachPhone,
+        leaderPhone: savedTeamData.leaderPhone,
+        homeJerseyColor: savedTeamData.homeJerseyColor,
+        awayJerseyColor: savedTeamData.awayJerseyColor,
+        teamLogo: savedTeamData.teamLogo || null,
+        homeJersey: savedTeamData.homeJersey || null,
+        awayJersey: savedTeamData.awayJersey || null,
+        players: savedPlayers,
+      };
+
+      setSavedTeam(team);
+      setIsSaved(true);
+      setError(null);
+
+      setTimeout(() => {
+        setIsSaved(false);
+      }, 3000);
+
+      console.log('球队信息和球员数据已成功保存到后端:', team);
     } catch (err) {
       console.error('保存球队信息失败:', err);
       if (err instanceof Error) {
@@ -206,6 +207,8 @@ const TeamInfoPage: React.FC = () => {
           setError('请求参数错误，请检查表单数据是否完整');
         } else if (err.message.includes('401')) {
           setError('未授权访问，请先登录');
+        } else if (err.message.includes('409')) {
+          setError('数据冲突：球队名称或学号已存在');
         } else if (err.message.includes('500')) {
           setError('服务器内部错误，请稍后重试');
         } else {
@@ -245,10 +248,6 @@ const TeamInfoPage: React.FC = () => {
 
     const teamInfo = [
       { '信息类型': '队伍名称', '内容': savedTeam.teamName },
-      { '信息类型': '所属联赛', '内容': savedTeam.league || '-' },
-      { '信息类型': '成立时间', '内容': savedTeam.foundedDate || '-' },
-      { '信息类型': '所在城市', '内容': savedTeam.homeCity || '-' },
-      { '信息类型': '主场场馆', '内容': savedTeam.homeStadium || '-' },
       { '信息类型': '队医姓名', '内容': savedTeam.teamDoctor },
       { '信息类型': '主教练姓名', '内容': savedTeam.headCoach },
       { '信息类型': '领队姓名', '内容': savedTeam.teamLeader },
@@ -258,11 +257,11 @@ const TeamInfoPage: React.FC = () => {
       { '信息类型': '客队球衣颜色', '内容': savedTeam.awayJerseyColor },
     ];
 
-    const playerData = savedTeam.players.map((player) => ({
+    const playerData = savedTeam.players?.map((player) => ({
       '姓名': player.name,
       '学号': player.studentId,
       '球衣号码': player.jerseyNumber,
-    }));
+    })) || [];
 
     const workbook = XLSX.utils.book_new();
     

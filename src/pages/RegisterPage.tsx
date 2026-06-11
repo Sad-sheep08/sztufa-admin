@@ -9,7 +9,6 @@ const RegisterPage: React.FC = () => {
   const { register, isLoading, error: authError, clearError } = useAuth();
   
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,15 +30,6 @@ const RegisterPage: React.FC = () => {
         }
         if (!/^[a-zA-Z0-9_]+$/.test(value)) {
           return '用户名只能包含字母、数字和下划线';
-        }
-        break;
-      case 'email':
-        if (!value.trim()) {
-          return '邮箱不能为空';
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-          return '请输入有效的邮箱地址';
         }
         break;
       case 'password':
@@ -75,9 +65,6 @@ const RegisterPage: React.FC = () => {
       case 'username':
         setUsername(value);
         break;
-      case 'email':
-        setEmail(value);
-        break;
       case 'password':
         setPassword(value);
         if (confirmPassword && value !== confirmPassword) {
@@ -106,18 +93,16 @@ const RegisterPage: React.FC = () => {
     const newErrors: ValidationErrors = {};
     
     const usernameError = validateField('username', username);
-    const emailError = validateField('email', email);
     const passwordError = validateField('password', password);
     const confirmPasswordError = validateField('confirmPassword', confirmPassword, { password });
     
     if (usernameError) newErrors.username = usernameError;
-    if (emailError) newErrors.email = emailError;
     if (passwordError) newErrors.password = passwordError;
     if (confirmPasswordError) newErrors.confirmPassword = confirmPasswordError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [username, email, password, confirmPassword, validateField]);
+  }, [username, password, confirmPassword, validateField]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -132,7 +117,7 @@ const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      await register(username, email, password);
+      await register(username, password);
       setSubmitSuccess(true);
       setTimeout(() => {
         navigate('/login');
@@ -198,25 +183,6 @@ const RegisterPage: React.FC = () => {
               />
               {errors.username && (
                 <span className="error-message">{errors.username}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email">邮箱</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={email}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                className={`form-input ${errors.email ? 'input-error' : ''}`}
-                placeholder="请输入邮箱地址"
-                disabled={isSubmitting}
-                autoComplete="email"
-              />
-              {errors.email && (
-                <span className="error-message">{errors.email}</span>
               )}
             </div>
 

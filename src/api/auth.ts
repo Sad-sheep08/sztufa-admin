@@ -1,7 +1,17 @@
-import { ApiResponse } from './types';
-import { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth';
+import { AuthResponse } from './types';
 
 const BASE_URL = 'https://sztufa-server.vercel.app/api/v1';
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  role?: string;
+}
 
 export const authApi = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
@@ -15,40 +25,33 @@ export const authApi = {
     
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data.message || '登录失败');
+      const errorMessage = Array.isArray(data.message) 
+        ? data.message.join(', ') 
+        : (data.message || '登录失败');
+      throw new Error(errorMessage);
     }
     
-    const data = await response.json();
-    
-    if (data.success !== undefined) {
-      return data.data as AuthResponse;
-    }
-    
-    return data as AuthResponse;
+    return response.json();
   },
 
-  register: async (userData: RegisterRequest): Promise<{ user: unknown }> => {
-    const { confirmPassword, ...registerData } = userData;
+  register: async (userData: RegisterRequest): Promise<AuthResponse> => {
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(registerData),
+      body: JSON.stringify(userData),
     });
     
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data.message || '注册失败');
+      const errorMessage = Array.isArray(data.message) 
+        ? data.message.join(', ') 
+        : (data.message || '注册失败');
+      throw new Error(errorMessage);
     }
     
-    const data = await response.json();
-    
-    if (data.success !== undefined) {
-      return data.data as { user: unknown };
-    }
-    
-    return data as { user: unknown };
+    return response.json();
   },
 };
 

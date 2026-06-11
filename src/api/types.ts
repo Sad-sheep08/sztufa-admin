@@ -1,13 +1,19 @@
 export interface ApiResponse<T = unknown> {
-  success: boolean;
-  message: string;
   data: T;
+  message?: string;
+}
+
+export interface PaginatedResponse<T = unknown> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ErrorResponse {
-  success: boolean;
-  message: string;
-  errors?: { [key: string]: string[] };
+  statusCode: number;
+  message: string | string[];
+  error: string;
 }
 
 export interface PlayerDTO {
@@ -16,26 +22,28 @@ export interface PlayerDTO {
   studentId: string;
   jerseyNumber: string;
   photo?: string | null;
+  teamId: string;
+  team?: TeamDTO;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TeamDTO {
   id?: string;
   teamName: string;
-  teamDoctor: string;
-  headCoach: string;
-  teamLeader: string;
-  coachPhone: string;
-  leaderPhone: string;
+  teamDoctor?: string;
+  headCoach?: string;
+  teamLeader?: string;
+  coachPhone?: string;
+  leaderPhone?: string;
   homeJerseyColor: string;
   awayJerseyColor: string;
   teamLogo?: string | null;
   homeJersey?: string | null;
   awayJersey?: string | null;
-  players: PlayerDTO[];
-  league?: string;
-  foundedDate?: string;
-  homeStadium?: string;
-  homeCity?: string;
+  players?: PlayerDTO[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface GoalDTO {
@@ -46,25 +54,53 @@ export interface GoalDTO {
 
 export interface MatchDTO {
   id?: string;
-  matchName: string;
-  matchTime: string;
-  homeTeamName: string;
-  awayTeamName: string;
-  homeTeamScore: number;
-  awayTeamScore: number;
-  homeTeamGoals: GoalDTO[];
-  awayTeamGoals: GoalDTO[];
-  homeTeamId?: string;
-  awayTeamId?: string;
-  location?: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeScore: number;
+  awayScore: number;
+  matchDate: string;
+  location: string;
+  status?: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';
+  homeTeam?: TeamDTO;
+  awayTeam?: TeamDTO;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TeamListResponse {
-  teams: TeamDTO[];
+  data: TeamDTO[];
   total: number;
+  page: number;
+  limit: number;
 }
 
 export interface MatchListResponse {
-  matches: MatchDTO[];
+  data: MatchDTO[];
   total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PlayerListResponse {
+  data: PlayerDTO[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ImportResult {
+  teams: number;
+  players: number;
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: string;
+  createdAt?: string;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token: string;
 }

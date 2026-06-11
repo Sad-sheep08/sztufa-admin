@@ -5,9 +5,8 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   username: string;
-  email: string;
   password: string;
-  confirmPassword: string;
+  role?: string;
 }
 
 export interface AuthResponse {
@@ -18,12 +17,13 @@ export interface AuthResponse {
 export interface User {
   id: string;
   username: string;
-  email: string;
+  role: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ValidationErrors {
   username?: string;
-  email?: string;
   password?: string;
   confirmPassword?: string;
 }

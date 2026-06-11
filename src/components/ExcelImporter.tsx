@@ -44,6 +44,7 @@ const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImport }) => {
           studentId: row['学号'] || row['studentId'] || row['student_id'] || '',
           jerseyNumber: String(row['球衣号码'] || row['jerseyNumber'] || row['jersey_number'] || ''),
           photo: null,
+          teamId: '',
         }));
 
         const validPlayers = players.filter(

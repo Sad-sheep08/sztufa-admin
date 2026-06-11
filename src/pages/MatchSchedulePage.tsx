@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { teamApi } from '../api/service';
-import { TeamDTO } from '../api/types';
+import { TeamDTO, PlayerDTO } from '../api/types';
 import { Team } from '../types';
 import { generateId } from '../utils';
 
@@ -23,36 +23,29 @@ const TeamViewEditPage: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await teamApi.getAll();
-      if (response.success) {
-        const teamList: Team[] = response.data.teams.map((t: TeamDTO) => ({
-          id: t.id || generateId(),
-          teamName: t.teamName,
-          teamDoctor: t.teamDoctor,
-          headCoach: t.headCoach,
-          teamLeader: t.teamLeader,
-          coachPhone: t.coachPhone,
-          leaderPhone: t.leaderPhone,
-          homeJerseyColor: t.homeJerseyColor,
-          awayJerseyColor: t.awayJerseyColor,
-          teamLogo: t.teamLogo || null,
-          homeJersey: t.homeJersey || null,
-          awayJersey: t.awayJersey || null,
-          players: t.players.map((p) => ({
-            id: p.id || generateId(),
-            name: p.name,
-            studentId: p.studentId,
-            jerseyNumber: p.jerseyNumber,
-            photo: p.photo || null,
-          })),
-          league: t.league,
-          foundedDate: t.foundedDate,
-          homeStadium: t.homeStadium,
-          homeCity: t.homeCity,
-        }));
-        setTeams(teamList);
-      } else {
-        setError(response.message || '加载球队列表失败');
-      }
+      const teamList: Team[] = response.data.map((t: TeamDTO) => ({
+        id: t.id || generateId(),
+        teamName: t.teamName,
+        teamDoctor: t.teamDoctor,
+        headCoach: t.headCoach,
+        teamLeader: t.teamLeader,
+        coachPhone: t.coachPhone,
+        leaderPhone: t.leaderPhone,
+        homeJerseyColor: t.homeJerseyColor,
+        awayJerseyColor: t.awayJerseyColor,
+        teamLogo: t.teamLogo || null,
+        homeJersey: t.homeJersey || null,
+        awayJersey: t.awayJersey || null,
+        players: t.players?.map((p: PlayerDTO) => ({
+          id: p.id || generateId(),
+          name: p.name,
+          studentId: p.studentId,
+          jerseyNumber: p.jerseyNumber,
+          photo: p.photo || null,
+          teamId: p.teamId || '',
+        })) || [],
+      }));
+      setTeams(teamList);
     } catch (err) {
       console.error('加载球队列表失败:', err);
       if (err instanceof Error && err.message === 'Unauthorized') {
@@ -85,7 +78,7 @@ const TeamViewEditPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await teamApi.update(editData.id, {
+      const editTeamDTO = {
         teamName: editData.teamName,
         teamDoctor: editData.teamDoctor,
         headCoach: editData.headCoach,
@@ -94,24 +87,17 @@ const TeamViewEditPage: React.FC = () => {
         leaderPhone: editData.leaderPhone,
         homeJerseyColor: editData.homeJerseyColor,
         awayJerseyColor: editData.awayJerseyColor,
-        league: editData.league || undefined,
-        foundedDate: editData.foundedDate || undefined,
-        homeStadium: editData.homeStadium || undefined,
-        homeCity: editData.homeCity || undefined,
-      });
+      };
 
-      if (response.success) {
-        setIsSaved(true);
-        setError(null);
-        loadTeams();
-        setTimeout(() => {
-          setIsSaved(false);
-          setIsEditing(false);
-          setEditData(null);
-        }, 2000);
-      } else {
-        setError(response.message || '更新失败');
-      }
+      await teamApi.update(editData.id, editTeamDTO);
+      setIsSaved(true);
+      setError(null);
+      loadTeams();
+      setTimeout(() => {
+        setIsSaved(false);
+        setIsEditing(false);
+        setEditData(null);
+      }, 2000);
     } catch (err) {
       console.error('更新球队信息失败:', err);
       setError('网络连接失败，请稍后重试');
@@ -125,15 +111,11 @@ const TeamViewEditPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await teamApi.delete(teamId);
-      if (response.success) {
-        loadTeams();
-        if (selectedTeam?.id === teamId) {
-          setSelectedTeam(null);
-          setEditData(null);
-        }
-      } else {
-        setError(response.message || '删除失败');
+      await teamApi.delete(teamId);
+      loadTeams();
+      if (selectedTeam?.id === teamId) {
+        setSelectedTeam(null);
+        setEditData(null);
       }
     } catch (err) {
       console.error('删除球队失败:', err);
@@ -156,12 +138,12 @@ const TeamViewEditPage: React.FC = () => {
   };
 
   return (
-    <div className="team-view-page">
+    <div className="team-info-page">
       <header className="page-header">
         <div className="header-content">
           <h1>
             <Users className="trophy-icon" />
-            球队信息查看与编辑
+            球队信息管理
           </h1>
           <p>查看和管理所有球队信息</p>
         </div>
@@ -175,31 +157,33 @@ const TeamViewEditPage: React.FC = () => {
           </div>
         )}
 
-        <div className="teams-container">
-          <div className="teams-list">
-            <div className="list-header">
-              <h2>球队列表</h2>
-              <button onClick={loadTeams} className="refresh-btn" disabled={isLoading}>
-                <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
-                刷新
-              </button>
-            </div>
+        <div className="form-section">
+          <div className="section-header">
+            <h2 className="form-title">
+              <span className="icon">🏆</span>
+              球队列表
+            </h2>
+            <button onClick={loadTeams} className="add-btn refresh-btn" disabled={isLoading}>
+              <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
+              刷新列表
+            </button>
+          </div>
 
-            {isLoading ? (
-              <div className="loading-state">加载中...</div>
-            ) : teams.length === 0 ? (
-              <div className="empty-state">
-                <Users size={48} />
-                <p>暂无球队数据，请先录入球队信息</p>
-              </div>
-            ) : (
-              <table className="teams-table">
+          {isLoading ? (
+            <div className="loading-state">加载中...</div>
+          ) : teams.length === 0 ? (
+            <div className="empty-state">
+              <Users size={48} />
+              <p>暂无球队数据，请先录入球队信息</p>
+            </div>
+          ) : (
+            <div className="player-table-wrapper">
+              <table className="player-table">
                 <thead>
                   <tr>
                     <th>球队名称</th>
                     <th>主教练</th>
-                    <th>所属联赛</th>
-                    <th>主场城市</th>
+                    <th>领队</th>
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -208,8 +192,7 @@ const TeamViewEditPage: React.FC = () => {
                     <tr key={team.id} className={selectedTeam?.id === team.id ? 'selected' : ''}>
                       <td>{team.teamName}</td>
                       <td>{team.headCoach}</td>
-                      <td>{team.league || '-'}</td>
-                      <td>{team.homeCity || '-'}</td>
+                      <td>{team.teamLeader}</td>
                       <td>
                         <button
                           onClick={() => handleViewTeam(team)}
@@ -227,7 +210,7 @@ const TeamViewEditPage: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleDeleteTeam(team.id)}
-                          className="action-btn delete-btn"
+                          className="delete-btn small"
                           title="删除"
                         >
                           <Trash2 size={14} />
@@ -237,247 +220,182 @@ const TeamViewEditPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
-
-          <div className="team-detail">
-            {selectedTeam ? (
-              <>
-                <div className="detail-header">
-                  <h2>{isEditing ? '编辑球队信息' : `${selectedTeam.teamName} - 详细信息`}</h2>
-                  {isEditing && (
-                    <>
-                      {isSaved && (
-                        <div className="save-success inline">
-                          <CheckCircle size={18} />
-                          保存成功
-                        </div>
-                      )}
-                      <div className="detail-actions">
-                        <button onClick={handleSaveEdit} className="save-btn small" disabled={isLoading}>
-                          <CheckCircle size={16} />
-                          保存
-                        </button>
-                        <button onClick={handleCancelEdit} className="cancel-btn">
-                          取消
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="detail-content">
-                  <div className="detail-section">
-                    <h3>基本信息</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>球队名称</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.teamName || ''}
-                            onChange={(e) => handleFieldChange('teamName', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.teamName}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>所属联赛</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.league || ''}
-                            onChange={(e) => handleFieldChange('league', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.league || '-'}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>成立时间</label>
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={editData?.foundedDate || ''}
-                            onChange={(e) => handleFieldChange('foundedDate', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.foundedDate || '-'}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>主场城市</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.homeCity || ''}
-                            onChange={(e) => handleFieldChange('homeCity', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.homeCity || '-'}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>主场场馆</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.homeStadium || ''}
-                            onChange={(e) => handleFieldChange('homeStadium', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.homeStadium || '-'}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="detail-section">
-                    <h3>管理人员</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>主教练</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.headCoach || ''}
-                            onChange={(e) => handleFieldChange('headCoach', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.headCoach}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>主教练电话</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.coachPhone || ''}
-                            onChange={(e) => handleFieldChange('coachPhone', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.coachPhone}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>领队</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.teamLeader || ''}
-                            onChange={(e) => handleFieldChange('teamLeader', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.teamLeader}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>领队电话</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.leaderPhone || ''}
-                            onChange={(e) => handleFieldChange('leaderPhone', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.leaderPhone}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>队医</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.teamDoctor || ''}
-                            onChange={(e) => handleFieldChange('teamDoctor', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.teamDoctor}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="detail-section">
-                    <h3>球衣信息</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>主场球衣颜色</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.homeJerseyColor || ''}
-                            onChange={(e) => handleFieldChange('homeJerseyColor', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.homeJerseyColor}</span>
-                        )}
-                      </div>
-                      <div className="detail-item">
-                        <label>客场球衣颜色</label>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData?.awayJerseyColor || ''}
-                            onChange={(e) => handleFieldChange('awayJerseyColor', e.target.value)}
-                            className="form-input"
-                          />
-                        ) : (
-                          <span>{selectedTeam.awayJerseyColor}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="detail-section">
-                    <h3>球员名单 ({selectedTeam.players.length}人)</h3>
-                    {selectedTeam.players.length === 0 ? (
-                      <div className="empty-state small">
-                        <p>暂无球员数据</p>
-                      </div>
-                    ) : (
-                      <table className="players-table">
-                        <thead>
-                          <tr>
-                            <th>姓名</th>
-                            <th>学号</th>
-                            <th>球衣号码</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedTeam.players.map((player) => (
-                            <tr key={player.id}>
-                              <td>{player.name}</td>
-                              <td>{player.studentId}</td>
-                              <td>{player.jerseyNumber}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="empty-detail">
-                <Users size={48} />
-                <p>请选择一支球队查看详情</p>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+
+        {selectedTeam && (
+          <div className="form-section">
+            <div className="section-header">
+              <h2 className="form-title">
+                <span className="icon">📋</span>
+                {isEditing ? '编辑球队信息' : `${selectedTeam.teamName} - 详细信息`}
+              </h2>
+              {isEditing && (
+                <div className="form-actions">
+                  {isSaved && (
+                    <div className="save-success inline">
+                      <CheckCircle size={18} />
+                      保存成功
+                    </div>
+                  )}
+                  <button onClick={handleSaveEdit} className="save-btn small" disabled={isLoading}>
+                    <CheckCircle size={16} />
+                    保存
+                  </button>
+                  <button onClick={handleCancelEdit} className="cancel-btn">
+                    取消
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>球队名称</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.teamName || ''}
+                    onChange={(e) => handleFieldChange('teamName', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.teamName}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>主教练</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.headCoach || ''}
+                    onChange={(e) => handleFieldChange('headCoach', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.headCoach}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>主教练电话</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.coachPhone || ''}
+                    onChange={(e) => handleFieldChange('coachPhone', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.coachPhone}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>领队</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.teamLeader || ''}
+                    onChange={(e) => handleFieldChange('teamLeader', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.teamLeader}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>领队电话</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.leaderPhone || ''}
+                    onChange={(e) => handleFieldChange('leaderPhone', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.leaderPhone}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>队医</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.teamDoctor || ''}
+                    onChange={(e) => handleFieldChange('teamDoctor', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.teamDoctor}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>主场球衣颜色</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.homeJerseyColor || ''}
+                    onChange={(e) => handleFieldChange('homeJerseyColor', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.homeJerseyColor}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>客场球衣颜色</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData?.awayJerseyColor || ''}
+                    onChange={(e) => handleFieldChange('awayJerseyColor', e.target.value)}
+                    className="form-input"
+                  />
+                ) : (
+                  <div className="form-value">{selectedTeam.awayJerseyColor}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedTeam && selectedTeam.players && selectedTeam.players.length > 0 && (
+          <div className="form-section">
+            <h2 className="form-title">
+              <span className="icon">👥</span>
+              球员名单 ({selectedTeam.players.length}人)
+            </h2>
+            <div className="player-table-wrapper">
+              <table className="player-table">
+                <thead>
+                  <tr>
+                    <th>姓名</th>
+                    <th>学号</th>
+                    <th>球衣号码</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedTeam.players?.map((player) => (
+                    <tr key={player.id}>
+                      <td>{player.name}</td>
+                      <td>{player.studentId}</td>
+                      <td>{player.jerseyNumber}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {!selectedTeam && (
+          <div className="form-section empty-detail-section">
+            <div className="empty-state">
+              <Users size={48} />
+              <p>请选择一支球队查看详情</p>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, password: string, role?: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
 }
@@ -88,7 +88,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const userInfo: User = {
           id: (userData as { id: string })?.id || '',
           username: (userData as { username: string })?.username || username,
-          email: (userData as { email: string })?.email || '',
+          role: (userData as { role: string })?.role || 'user',
         };
         
         localStorage.setItem('user', JSON.stringify(userInfo));
@@ -105,16 +105,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, password: string, role?: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
       await authApi.register({
         username,
-        email,
         password,
-        confirmPassword: password,
+        role,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : '注册失败';

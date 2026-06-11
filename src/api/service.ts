@@ -1,4 +1,4 @@
-import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, TeamListResponse, MatchListResponse } from './types';
+import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, PlayerDTO, TeamListResponse, MatchListResponse, PlayerListResponse, ImportResult, AuthResponse } from './types';
 
 const BASE_URL = 'https://sztufa-server.vercel.app/api/v1';
 
@@ -41,7 +41,7 @@ const createHeaders = (multipart = false): Headers => {
   return headers;
 };
 
-const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+const handleResponse = async <T>(response: Response): Promise<T> => {
   if (response.status === 401) {
     handleAuthError(response);
   }
@@ -50,11 +50,13 @@ const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> =>
     const data = await response.json();
     
     if (!response.ok) {
-      const errorMessage = data.message || (response.status === 401 ? 'Unauthorized' : '请求失败');
+      const errorMessage = Array.isArray(data.message) 
+        ? data.message.join(', ') 
+        : (data.message || (response.status === 401 ? 'Unauthorized' : '请求失败'));
       throw new Error(errorMessage);
     }
     
-    return data as ApiResponse<T>;
+    return data as T;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -64,7 +66,7 @@ const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> =>
 };
 
 export const teamApi = {
-  create: async (teamData: TeamDTO): Promise<ApiResponse<TeamDTO>> => {
+  create: async (teamData: TeamDTO): Promise<TeamDTO> => {
     const response = await fetch(`${BASE_URL}/teams`, {
       method: 'POST',
       headers: createHeaders(),
@@ -73,7 +75,7 @@ export const teamApi = {
     return handleResponse<TeamDTO>(response);
   },
 
-  getAll: async (page = 1, limit = 10): Promise<ApiResponse<TeamListResponse>> => {
+  getAll: async (page = 1, limit = 10): Promise<TeamListResponse> => {
     const response = await fetch(`${BASE_URL}/teams?page=${page}&limit=${limit}`, {
       method: 'GET',
       headers: createHeaders(),
@@ -81,7 +83,15 @@ export const teamApi = {
     return handleResponse<TeamListResponse>(response);
   },
 
-  getById: async (id: string): Promise<ApiResponse<TeamDTO>> => {
+  search: async (name: string): Promise<TeamDTO[]> => {
+    const response = await fetch(`${BASE_URL}/teams/search?name=${encodeURIComponent(name)}`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<TeamDTO[]>(response);
+  },
+
+  getById: async (id: string): Promise<TeamDTO> => {
     const response = await fetch(`${BASE_URL}/teams/${id}`, {
       method: 'GET',
       headers: createHeaders(),
@@ -89,7 +99,7 @@ export const teamApi = {
     return handleResponse<TeamDTO>(response);
   },
 
-  update: async (id: string, teamData: Partial<TeamDTO>): Promise<ApiResponse<TeamDTO>> => {
+  update: async (id: string, teamData: Partial<TeamDTO>): Promise<TeamDTO> => {
     const response = await fetch(`${BASE_URL}/teams/${id}`, {
       method: 'PATCH',
       headers: createHeaders(),
@@ -98,17 +108,73 @@ export const teamApi = {
     return handleResponse<TeamDTO>(response);
   },
 
-  delete: async (id: string): Promise<ApiResponse<void>> => {
+  delete: async (id: string): Promise<TeamDTO> => {
     const response = await fetch(`${BASE_URL}/teams/${id}`, {
       method: 'DELETE',
       headers: createHeaders(),
     });
-    return handleResponse<void>(response);
+    return handleResponse<TeamDTO>(response);
+  },
+};
+
+export const playerApi = {
+  create: async (playerData: PlayerDTO): Promise<PlayerDTO> => {
+    const response = await fetch(`${BASE_URL}/players`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify(playerData),
+    });
+    return handleResponse<PlayerDTO>(response);
+  },
+
+  getAll: async (page = 1, limit = 10, teamId?: string): Promise<PlayerListResponse> => {
+    let url = `${BASE_URL}/players?page=${page}&limit=${limit}`;
+    if (teamId) {
+      url += `&teamId=${teamId}`;
+    }
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<PlayerListResponse>(response);
+  },
+
+  search: async (name: string): Promise<PlayerDTO[]> => {
+    const response = await fetch(`${BASE_URL}/players/search?name=${encodeURIComponent(name)}`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<PlayerDTO[]>(response);
+  },
+
+  getById: async (id: string): Promise<PlayerDTO> => {
+    const response = await fetch(`${BASE_URL}/players/${id}`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<PlayerDTO>(response);
+  },
+
+  update: async (id: string, playerData: Partial<PlayerDTO>): Promise<PlayerDTO> => {
+    const response = await fetch(`${BASE_URL}/players/${id}`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify(playerData),
+    });
+    return handleResponse<PlayerDTO>(response);
+  },
+
+  delete: async (id: string): Promise<PlayerDTO> => {
+    const response = await fetch(`${BASE_URL}/players/${id}`, {
+      method: 'DELETE',
+      headers: createHeaders(),
+    });
+    return handleResponse<PlayerDTO>(response);
   },
 };
 
 export const matchApi = {
-  create: async (matchData: MatchDTO): Promise<ApiResponse<MatchDTO>> => {
+  create: async (matchData: MatchDTO): Promise<MatchDTO> => {
     const response = await fetch(`${BASE_URL}/matches`, {
       method: 'POST',
       headers: createHeaders(),
@@ -117,15 +183,19 @@ export const matchApi = {
     return handleResponse<MatchDTO>(response);
   },
 
-  getAll: async (page = 1, limit = 10): Promise<ApiResponse<MatchListResponse>> => {
-    const response = await fetch(`${BASE_URL}/matches?page=${page}&limit=${limit}`, {
+  getAll: async (page = 1, limit = 10, teamId?: string): Promise<MatchListResponse> => {
+    let url = `${BASE_URL}/matches?page=${page}&limit=${limit}`;
+    if (teamId) {
+      url += `&teamId=${teamId}`;
+    }
+    const response = await fetch(url, {
       method: 'GET',
       headers: createHeaders(),
     });
     return handleResponse<MatchListResponse>(response);
   },
 
-  getById: async (id: string): Promise<ApiResponse<MatchDTO>> => {
+  getById: async (id: string): Promise<MatchDTO> => {
     const response = await fetch(`${BASE_URL}/matches/${id}`, {
       method: 'GET',
       headers: createHeaders(),
@@ -133,7 +203,7 @@ export const matchApi = {
     return handleResponse<MatchDTO>(response);
   },
 
-  update: async (id: string, matchData: Partial<MatchDTO>): Promise<ApiResponse<MatchDTO>> => {
+  update: async (id: string, matchData: Partial<MatchDTO>): Promise<MatchDTO> => {
     const response = await fetch(`${BASE_URL}/matches/${id}`, {
       method: 'PATCH',
       headers: createHeaders(),
@@ -142,17 +212,17 @@ export const matchApi = {
     return handleResponse<MatchDTO>(response);
   },
 
-  delete: async (id: string): Promise<ApiResponse<void>> => {
+  delete: async (id: string): Promise<MatchDTO> => {
     const response = await fetch(`${BASE_URL}/matches/${id}`, {
       method: 'DELETE',
       headers: createHeaders(),
     });
-    return handleResponse<void>(response);
+    return handleResponse<MatchDTO>(response);
   },
 };
 
 export const authApi = {
-  login: async (username: string, password: string): Promise<ApiResponse<{ token: string; user: unknown }>> => {
+  login: async (username: string, password: string): Promise<AuthResponse> => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     
@@ -161,22 +231,33 @@ export const authApi = {
       headers,
       body: JSON.stringify({ username, password }),
     });
-    return handleResponse<{ token: string; user: unknown }>(response);
+    return handleResponse<AuthResponse>(response);
   },
 
-  register: async (username: string, email: string, password: string): Promise<ApiResponse<{ user: unknown }>> => {
+  register: async (username: string, password: string, role?: string): Promise<AuthResponse> => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, password, role }),
     });
-    return handleResponse<{ user: unknown }>(response);
+    return handleResponse<AuthResponse>(response);
+  },
+};
+
+export const importApi = {
+  importFromJson: async (filePath: string): Promise<ApiResponse<{ result: ImportResult }>> => {
+    const response = await fetch(`${BASE_URL}/import/json`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ filePath }),
+    });
+    return handleResponse<ApiResponse<{ result: ImportResult }>>(response);
   },
 };
 
 export const validateResponse = (response: ApiResponse | ErrorResponse): response is ApiResponse => {
-  return response.success === true;
+  return 'data' in response && 'message' in response;
 };

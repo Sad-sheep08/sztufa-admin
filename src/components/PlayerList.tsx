@@ -21,6 +21,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
     studentId: '',
     jerseyNumber: '',
     photo: null,
+    teamId: '',
   });
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -42,8 +43,9 @@ const PlayerList: React.FC<PlayerListProps> = ({
         studentId: newPlayer.studentId,
         jerseyNumber: newPlayer.jerseyNumber,
         photo: preview,
+        teamId: '',
       });
-      setNewPlayer({ name: '', studentId: '', jerseyNumber: '', photo: null });
+      setNewPlayer({ name: '', studentId: '', jerseyNumber: '', photo: null, teamId: '' });
       setPreview(null);
       setIsAdding(false);
     }

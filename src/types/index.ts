@@ -4,26 +4,28 @@ export interface Player {
   studentId: string;
   jerseyNumber: string;
   photo: string | null;
+  teamId: string;
+  team?: Team;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Team {
   id: string;
   teamName: string;
-  teamDoctor: string;
-  headCoach: string;
-  teamLeader: string;
-  coachPhone: string;
-  leaderPhone: string;
+  teamDoctor?: string;
+  headCoach?: string;
+  teamLeader?: string;
+  coachPhone?: string;
+  leaderPhone?: string;
   homeJerseyColor: string;
   awayJerseyColor: string;
   teamLogo: string | null;
   homeJersey: string | null;
   awayJersey: string | null;
-  players: Player[];
-  league?: string;
-  foundedDate?: string;
-  homeStadium?: string;
-  homeCity?: string;
+  players?: Player[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TeamFormData {
@@ -38,10 +40,6 @@ export interface TeamFormData {
   teamLogo: File | null;
   homeJersey: File | null;
   awayJersey: File | null;
-  league: string;
-  foundedDate: string;
-  homeStadium: string;
-  homeCity: string;
 }
 
 export interface PlayerFormData {
@@ -49,6 +47,7 @@ export interface PlayerFormData {
   studentId: string;
   jerseyNumber: string;
   photo: File | null;
+  teamId: string;
 }
 
 export interface Goal {
@@ -61,28 +60,37 @@ export interface Match {
   id: string;
   matchName: string;
   matchTime: string;
-  homeTeamScore: number;
-  awayTeamScore: number;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamName?: string;
+  awayTeamName?: string;
+  homeTeam?: Team;
+  awayTeam?: Team;
+  homeScore: number;
+  awayScore: number;
+  homeTeamScore?: number;
+  awayTeamScore?: number;
   homeTeamGoals: Goal[];
   awayTeamGoals: Goal[];
-  homeTeamId?: string;
-  awayTeamId?: string;
-  homeTeamName: string;
-  awayTeamName: string;
-  location?: string;
-  status?: 'pending' | 'completed' | 'cancelled';
+  matchDate?: string;
+  location: string;
+  status: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MatchFormData {
   matchName: string;
   matchTime: string;
+  homeTeamId: string;
+  awayTeamId: string;
   homeTeamName: string;
   awayTeamName: string;
   homeTeamScore: string;
   awayTeamScore: string;
   homeTeamGoals: Goal[];
   awayTeamGoals: Goal[];
-  homeTeamId: string;
-  awayTeamId: string;
+  matchDate: string;
   location: string;
+  status?: string;
 }
