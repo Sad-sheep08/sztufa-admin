@@ -258,6 +258,26 @@ export const importApi = {
   },
 };
 
+export const uploadApi = {
+  upload: async (file: File): Promise<ApiResponse<{ url: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const headers = new Headers();
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const response = await fetch(`${BASE_URL}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    return handleResponse<ApiResponse<{ url: string }>>(response);
+  },
+};
+
 export const validateResponse = (response: ApiResponse | ErrorResponse): response is ApiResponse => {
   return 'data' in response && 'message' in response;
 };

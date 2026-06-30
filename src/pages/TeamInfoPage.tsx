@@ -6,7 +6,7 @@ import PlayerList from '../components/PlayerList';
 import ExcelImporter from '../components/ExcelImporter';
 import { Team, TeamFormData, Player } from '../types';
 import { generateId, fileToBase64 } from '../utils';
-import { teamApi, playerApi } from '../api/service';
+import { teamApi, playerApi, uploadApi } from '../api/service';
 import { TeamDTO, PlayerDTO } from '../api/types';
 
 const TeamInfoPage: React.FC = () => {
@@ -112,16 +112,29 @@ const TeamInfoPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 第一步：将图片转换为Base64
-      const teamLogoBase64 = teamFormData.teamLogo
-        ? await fileToBase64(teamFormData.teamLogo)
-        : null;
-      const homeJerseyBase64 = teamFormData.homeJersey
-        ? await fileToBase64(teamFormData.homeJersey)
-        : null;
-      const awayJerseyBase64 = teamFormData.awayJersey
-        ? await fileToBase64(teamFormData.awayJersey)
-        : null;
+      // 第一步：将图片上传到 Cloudflare R2
+      let teamLogoUrl: string | null = null;
+      let homeJerseyUrl: string | null = null;
+      let awayJerseyUrl: string | null = null;
+
+      if (teamFormData.teamLogo) {
+        const uploadRes = await uploadApi.upload(teamFormData.teamLogo);
+        if (uploadRes.data && uploadRes.data.url) {
+          teamLogoUrl = uploadRes.data.url;
+        }
+      }
+      if (teamFormData.homeJersey) {
+        const uploadRes = await uploadApi.upload(teamFormData.homeJersey);
+        if (uploadRes.data && uploadRes.data.url) {
+          homeJerseyUrl = uploadRes.data.url;
+        }
+      }
+      if (teamFormData.awayJersey) {
+        const uploadRes = await uploadApi.upload(teamFormData.awayJersey);
+        if (uploadRes.data && uploadRes.data.url) {
+          awayJerseyUrl = uploadRes.data.url;
+        }
+      }
 
       // 第二步：准备球队数据（不包含players，因为需要先创建球队获取ID）
       const teamDTO: TeamDTO = {
@@ -133,9 +146,9 @@ const TeamInfoPage: React.FC = () => {
         leaderPhone: teamFormData.leaderPhone,
         homeJerseyColor: teamFormData.homeJerseyColor,
         awayJerseyColor: teamFormData.awayJerseyColor,
-        teamLogo: teamLogoBase64,
-        homeJersey: homeJerseyBase64,
-        awayJersey: awayJerseyBase64,
+        teamLogo: teamLogoUrl,
+        homeJersey: homeJerseyUrl,
+        awayJersey: awayJerseyUrl,
       };
 
       console.log('正在提交球队数据到后端:', teamDTO);
