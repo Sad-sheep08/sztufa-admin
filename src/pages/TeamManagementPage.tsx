@@ -222,6 +222,35 @@ const TeamManagementPage: React.FC = () => {
           }
         }
       }
+
+      // 校验换下后不能再换上，以及已换下球员不能再次换下
+      const homeSubbedOff = new Set<string>();
+      const awaySubbedOff = new Set<string>();
+
+      const sortedEvents = [...formData.events].sort((a, b) => {
+        const parseTime = (t: string) => parseInt(t.replace(/'/g, '')) || 0;
+        return parseTime(a.eventTime) - parseTime(b.eventTime);
+      });
+
+      for (const event of sortedEvents) {
+        if (event.eventType === 'substitution') {
+          const subbedOffSet = event.teamType === 'home' ? homeSubbedOff : awaySubbedOff;
+          
+          if (event.playerId && subbedOffSet.has(event.playerId)) {
+            setError(`换人错误：球员 ${event.playerName} 已经被换下过，不能再次换上`);
+            return false;
+          }
+          
+          if (event.subPlayerId && subbedOffSet.has(event.subPlayerId)) {
+            setError(`换人错误：球员 ${event.subPlayerName} 已经被换下过，不能再次换下`);
+            return false;
+          }
+
+          if (event.subPlayerId) {
+            subbedOffSet.add(event.subPlayerId);
+          }
+        }
+      }
     }
 
     return true;
