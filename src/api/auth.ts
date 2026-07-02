@@ -1,6 +1,6 @@
 import { AuthResponse } from './types';
 
-const BASE_URL = 'https://api.sztufa.xyz/api/v1';
+const BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001/api/v1' : 'https://api.sztufa.xyz/api/v1';
 
 export interface LoginRequest {
   username: string;

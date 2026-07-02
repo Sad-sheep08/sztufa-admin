@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, MapPin, Plus, X } from 'lucide-react';
 import { matchApi, playerApi } from '../api/service';
 import { MatchDTO, PlayerDTO } from '../api/types';
-import { Match, Goal } from '../types';
+import { Match, Goal, MatchEvent } from '../types';
 import { generateId } from '../utils';
 
 const MatchViewEditPage: React.FC = () => {
@@ -38,23 +38,28 @@ const MatchViewEditPage: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await matchApi.getAll();
-      const matchList: Match[] = response.data.map((m: MatchDTO) => ({
-        id: m.id || generateId(),
-        matchName: `${m.homeTeam?.teamName || '主队'} vs ${m.awayTeam?.teamName || '客队'}`,
-        matchTime: m.matchDate,
-        homeTeamName: m.homeTeam?.teamName,
-        awayTeamName: m.awayTeam?.teamName,
-        homeScore: m.homeScore,
-        awayScore: m.awayScore,
-        homeTeamGoals: [],
-        awayTeamGoals: [],
-        homeTeamId: m.homeTeamId,
-        awayTeamId: m.awayTeamId,
-        location: m.location,
-        status: m.status || 'finished',
-        homeTeamScore: m.homeScore,
-        awayTeamScore: m.awayScore,
-      }));
+      const matchList: Match[] = response.data.map((m: MatchDTO) => {
+        const homeGoals = (m.goals || []).filter(g => g.teamType === 'home');
+        const awayGoals = (m.goals || []).filter(g => g.teamType === 'away');
+        return {
+          id: m.id || generateId(),
+          matchName: `${m.homeTeam?.teamName || '主队'} vs ${m.awayTeam?.teamName || '客队'}`,
+          matchTime: m.matchDate,
+          homeTeamName: m.homeTeam?.teamName,
+          awayTeamName: m.awayTeam?.teamName,
+          homeScore: m.homeScore,
+          awayScore: m.awayScore,
+          homeTeamGoals: homeGoals,
+          awayTeamGoals: awayGoals,
+          events: m.events || [],
+          homeTeamId: m.homeTeamId,
+          awayTeamId: m.awayTeamId,
+          location: m.location,
+          status: m.status || 'finished',
+          homeTeamScore: m.homeScore,
+          awayTeamScore: m.awayScore,
+        };
+      });
       setMatches(matchList);
     } catch (err) {
       console.error('加载比赛列表失败:', err);
@@ -87,48 +92,208 @@ const MatchViewEditPage: React.FC = () => {
     }
   };
 
-  const handlePlayerSelect = (team: 'home' | 'away', index: number, playerId: string) => {
+  const handleEventPlayerSelect = (index: number, playerId: string) => {
     if (!editData) return;
-    
-    const players = team === 'home' ? homeTeamPlayers : awayTeamPlayers;
+    const event = editData.events[index];
+    const players = event.teamType === 'home' ? homeTeamPlayers : awayTeamPlayers;
     const player = players.find(p => p.id === playerId);
-    const key = team === 'home' ? 'homeTeamGoals' : 'awayTeamGoals';
     
-    const goals = [...editData[key]];
-    goals[index] = {
-      ...goals[index],
+    const events = [...(editData.events || [])];
+    events[index] = {
+      ...events[index],
+      playerId: player?.id || '',
       playerName: player?.name || '',
       jerseyNumber: player?.jerseyNumber || '',
     };
-    setEditData({ ...editData, [key]: goals });
+    setEditData({ ...editData, events });
   };
 
-  const addGoal = (team: 'home' | 'away') => {
+  const handleSubPlayerSelect = (index: number, playerId: string) => {
     if (!editData) return;
+    const event = editData.events[index];
+    const players = event.teamType === 'home' ? homeTeamPlayers : awayTeamPlayers;
+    const player = players.find(p => p.id === playerId);
     
-    const key = team === 'home' ? 'homeTeamGoals' : 'awayTeamGoals';
-    const goals = [...editData[key], { playerName: '', jerseyNumber: '', goalTime: '' }];
-    setEditData({ ...editData, [key]: goals });
+    const events = [...(editData.events || [])];
+    events[index] = {
+      ...events[index],
+      subPlayerId: player?.id || '',
+      subPlayerName: player?.name || '',
+      subJerseyNumber: player?.jerseyNumber || '',
+    };
+    setEditData({ ...editData, events });
   };
 
-  const removeGoal = (team: 'home' | 'away', index: number) => {
-    if (!editData) return;
-    
-    const key = team === 'home' ? 'homeTeamGoals' : 'awayTeamGoals';
-    const goals = editData[key].filter((_, i) => i !== index);
-    setEditData({ ...editData, [key]: goals });
+  const handleEventChange = (index: number, field: keyof MatchEvent, value: any) => {
+    if (editData) {
+      const events = [...(editData.events || [])];
+      events[index] = { ...events[index], [field]: value } as MatchEvent;
+      setEditData({ ...editData, events });
+    }
+  };
+
+  const addEvent = (team: 'home' | 'away') => {
+    if (editData) {
+      const events = [
+        ...(editData.events || []),
+        {
+          eventTime: '',
+          eventType: 'goal',
+          playerId: '',
+          playerName: '',
+          jerseyNumber: '',
+          description: '',
+          teamType: team,
+        } as MatchEvent
+      ];
+      setEditData({ ...editData, events });
+    }
+  };
+
+  const removeEvent = (index: number) => {
+    if (editData) {
+      const events = editData.events.filter((_, i) => i !== index);
+      setEditData({ ...editData, events });
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editData) return;
 
+    setError(null);
+
+    // 校验事件比分是否对齐
+    const homeScore = editData.homeScore;
+    const awayScore = editData.awayScore;
+
+    // 主队总得分 = 主队普通进球 + 主队点球 + 客队乌龙球
+    const homeGoalsCount = (editData.events || []).filter(e => e.teamType === 'home' && (e.eventType === 'goal' || e.eventType === 'penalty')).length +
+                           (editData.events || []).filter(e => e.teamType === 'away' && e.eventType === 'own_goal').length;
+    // 客队总得分 = 客队普通进球 + 客队点球 + 主队乌龙球
+    const awayGoalsCount = (editData.events || []).filter(e => e.teamType === 'away' && (e.eventType === 'goal' || e.eventType === 'penalty')).length +
+                           (editData.events || []).filter(e => e.teamType === 'home' && e.eventType === 'own_goal').length;
+
+    if (homeScore !== homeGoalsCount) {
+      setError(`主队进球/点球/对方乌龙数(${homeGoalsCount})与主队得分(${homeScore})不一致`);
+      return;
+    }
+    if (awayScore !== awayGoalsCount) {
+      setError(`客队进球/点球/对方乌龙数(${awayGoalsCount})与客队得分(${awayScore})不一致`);
+      return;
+    }
+
+    if (editData.events) {
+      for (const event of editData.events) {
+        if (!event.eventTime || !event.eventTime.trim()) {
+          setError('请填写所有事件的时间');
+          return;
+        }
+        if (event.eventType === 'substitution') {
+          if (!event.playerId) {
+            setError('请选择换人事件的换上球员');
+            return;
+          }
+          if (!event.subPlayerId) {
+            setError('请选择换人事件的换下球员');
+            return;
+          }
+          if (event.playerId === event.subPlayerId) {
+            setError('换上球员与换下球员不能相同');
+            return;
+          }
+        } else {
+          if (!event.playerId) {
+            setError('请选择事件关联的球员');
+            return;
+          }
+        }
+      }
+      // 校验换下后不能再换上，以及已换下球员不能再次换下
+      const homeSubbedOff = new Set<string>();
+      const awaySubbedOff = new Set<string>();
+
+      const sortedEvents = [...editData.events].sort((a, b) => {
+        const parseTime = (t: string) => parseInt(t.replace(/'/g, '')) || 0;
+        return parseTime(a.eventTime) - parseTime(b.eventTime);
+      });
+
+      for (const event of sortedEvents) {
+        if (event.eventType === 'substitution') {
+          const subbedOffSet = event.teamType === 'home' ? homeSubbedOff : awaySubbedOff;
+          
+          if (event.playerId && subbedOffSet.has(event.playerId)) {
+            setError(`换人错误：球员 ${event.playerName} 已经被换下过，不能再次换上`);
+            return;
+          }
+          
+          if (event.subPlayerId && subbedOffSet.has(event.subPlayerId)) {
+            setError(`换人错误：球员 ${event.subPlayerName} 已经被换下过，不能再次换下`);
+            return;
+          }
+
+          if (event.subPlayerId) {
+            subbedOffSet.add(event.subPlayerId);
+          }
+        }
+      }
+    }
+
     setIsLoading(true);
     try {
+      // 映射事件数据
+      const events = (editData.events || []).map(e => ({
+        eventTime: e.eventTime,
+        eventType: e.eventType,
+        description: e.description || (
+          e.eventType === 'substitution'
+            ? `换上 ${e.playerName} (${e.jerseyNumber}号)，换下 ${e.subPlayerName} (${e.subJerseyNumber}号)`
+            : e.eventType === 'own_goal'
+              ? `乌龙球`
+              : e.eventType === 'penalty'
+                ? `点球`
+                : `进球`
+        ),
+        teamType: e.teamType,
+        playerId: e.playerId || null,
+        playerName: e.playerName || null,
+        jerseyNumber: e.jerseyNumber || null,
+        subPlayerId: e.subPlayerId || null,
+        subPlayerName: e.subPlayerName || null,
+        subJerseyNumber: e.subJerseyNumber || null,
+      }));
+
+      // 提取所有进球/点球/乌龙球，同步至 Goal 表以向下兼容
+      const goals = events
+        .filter(e => e.eventType === 'goal' || e.eventType === 'penalty' || e.eventType === 'own_goal')
+        .map(e => ({
+          playerName: e.eventType === 'own_goal' ? `${e.playerName} (乌龙)` : e.eventType === 'penalty' ? `${e.playerName} (点球)` : e.playerName || '',
+          goalTime: e.eventTime,
+          jerseyNumber: e.jerseyNumber || '',
+          teamType: e.eventType === 'own_goal' ? (e.teamType === 'home' ? 'away' : 'home') : e.teamType,
+          playerId: e.playerId || null
+        }));
+
+      // 转换比赛日期格式为 ISO 字符串以配合后端 @IsDateString 校验
+      let formattedMatchDate = editData.matchTime;
+      if (formattedMatchDate) {
+        try {
+          const cleaned = formattedMatchDate.replace(/\//g, '-');
+          const date = new Date(cleaned);
+          if (!isNaN(date.getTime())) {
+            formattedMatchDate = date.toISOString();
+          }
+        } catch (e) {
+          console.error('格式化比赛日期失败:', e);
+        }
+      }
+
       await matchApi.update(editData.id, {
         homeScore: editData.homeScore,
         awayScore: editData.awayScore,
-        matchDate: editData.matchTime,
+        matchDate: formattedMatchDate,
         location: editData.location,
+        goals: goals,
+        events: events,
       });
 
       setIsSaved(true);
@@ -141,7 +306,7 @@ const MatchViewEditPage: React.FC = () => {
       }, 2000);
     } catch (err) {
       console.error('更新比赛信息失败:', err);
-      setError('网络连接失败，请稍后重试');
+      setError(err instanceof Error ? err.message : '网络连接失败，请稍后重试');
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +325,7 @@ const MatchViewEditPage: React.FC = () => {
       }
     } catch (err) {
       console.error('删除比赛失败:', err);
-      setError('网络连接失败，请稍后重试');
+      setError(err instanceof Error ? err.message : '网络连接失败，请稍后重试');
     } finally {
       setIsLoading(false);
     }
@@ -199,6 +364,26 @@ const MatchViewEditPage: React.FC = () => {
       });
     } catch {
       return time;
+    }
+  };
+
+  const formatForDateTimeLocal = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const cleaned = dateStr.replace(/\//g, '-');
+      const date = new Date(cleaned);
+      if (isNaN(date.getTime())) {
+        return '';
+      }
+      const pad = (num: number) => String(num).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const mm = pad(date.getMonth() + 1);
+      const dd = pad(date.getDate());
+      const hh = pad(date.getHours());
+      const min = pad(date.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+    } catch {
+      return '';
     }
   };
 
@@ -365,7 +550,7 @@ const MatchViewEditPage: React.FC = () => {
                 {isEditing ? (
                   <input
                     type="datetime-local"
-                    value={editData?.matchTime || ''}
+                    value={formatForDateTimeLocal(editData?.matchTime || '')}
                     onChange={(e) => handleFieldChange('matchTime', e.target.value)}
                     className="form-input"
                   />
@@ -493,20 +678,20 @@ const MatchViewEditPage: React.FC = () => {
           </div>
         )}
 
-        {selectedMatch && (isEditing || (editData?.homeTeamGoals.length || 0) > 0) && (
+        {selectedMatch && (isEditing || (editData?.events.filter(e => e.teamType === 'home').length || 0) > 0) && (
           <div className="form-section">
             <div className="section-header">
               <h2 className="form-title">
                 <span className="icon">👕</span>
-                主队进球记录
+                主队事件记录（进球、换人、红黄牌）
               </h2>
               {isEditing && (
                 <button
-                  onClick={() => addGoal('home')}
+                  onClick={() => addEvent('home')}
                   className="add-btn small"
                 >
                   <Plus size={14} />
-                  添加进球
+                  添加主队事件
                 </button>
               )}
             </div>
@@ -514,56 +699,146 @@ const MatchViewEditPage: React.FC = () => {
               <table className="player-table">
                 <thead>
                   <tr>
-                    <th>进球球员</th>
-                    <th>球衣号码</th>
-                    <th>进球时间</th>
-                    {isEditing && <th>操作</th>}
+                    <th style={{ width: '120px' }}>时间</th>
+                    <th style={{ width: '150px' }}>事件类型</th>
+                    <th style={{ width: '220px' }}>球员</th>
+                    <th style={{ width: '120px' }}>号码</th>
+                    <th>事件描述</th>
+                    {isEditing && <th style={{ width: '60px' }}>操作</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {(editData?.homeTeamGoals.length || 0) > 0 ? (
-                    editData?.homeTeamGoals.map((goal, index) => (
-                      <tr key={index}>
-                        <td>
-                          {isEditing ? (
-                            <select
-                              value={homeTeamPlayers.find(p => p.name === goal.playerName)?.id || ''}
-                              onChange={(e) => handlePlayerSelect('home', index, e.target.value)}
-                              className="form-select inline"
-                            >
-                              <option value="">请选择球员</option>
-                              {homeTeamPlayers.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.name}
-                                </option>
-                              ))}
-                            </select>
+                  {(editData?.events.filter(e => e.teamType === 'home').length || 0) > 0 ? (
+                    editData?.events.map((event, index) => {
+                      if (event.teamType !== 'home') return null;
+                      return (
+                        <tr key={index}>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={event.eventTime || ''}
+                                onChange={(e) => handleEventChange(index, 'eventTime', e.target.value)}
+                                className="form-input inline"
+                                placeholder="如: 35'"
+                                required
+                            />
                           ) : (
-                            <span>{goal.playerName}</span>
+                            <span>{event.eventTime}</span>
                           )}
                         </td>
                         <td>
-                          <div className="form-value inline">
-                            {goal.jerseyNumber || '-'}
+                          {isEditing ? (
+                            <select
+                              value={event.eventType}
+                              onChange={(e) => handleEventChange(index, 'eventType', e.target.value as any)}
+                              className="form-select inline"
+                              required
+                            >
+                              <option value="goal">⚽ 普通进球</option>
+                              <option value="penalty">🎯 点球</option>
+                              <option value="own_goal">🥅 乌龙球</option>
+                              <option value="substitution">🔄 换人</option>
+                              <option value="yellow_card">🟨 黄牌</option>
+                              <option value="red_card">🟥 红牌</option>
+                            </select>
+                          ) : (
+                            <span>
+                              {event.eventType === 'goal' && '⚽ 普通进球'}
+                              {event.eventType === 'penalty' && '🎯 点球'}
+                              {event.eventType === 'own_goal' && '🥅 乌龙球'}
+                              {event.eventType === 'substitution' && '🔄 换人'}
+                              {event.eventType === 'yellow_card' && '🟨 黄牌'}
+                              {event.eventType === 'red_card' && '🟥 红牌'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            event.eventType === 'substitution' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换上球员</option>
+                                  {homeTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换上: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={event.subPlayerId || ''}
+                                  onChange={(e) => handleSubPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换下球员</option>
+                                  {homeTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换下: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <select
+                                value={event.playerId || ''}
+                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                className="form-select inline"
+                                required
+                              >
+                                <option value="">请选择球员</option>
+                                {homeTeamPlayers.map((player) => (
+                                  <option key={player.id} value={player.id}>
+                                    {player.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )
+                          ) : (
+                            event.eventType === 'substitution' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
+                                <span>换上: {event.playerName}</span>
+                                <span>换下: {event.subPlayerName}</span>
+                              </div>
+                            ) : (
+                              <span>{event.playerName}</span>
+                            )
+                          )}
+                        </td>
+                        <td>
+                          <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
+                            {event.eventType === 'substitution' ? (
+                              <span>
+                                上: {event.jerseyNumber || '-'} <br/>
+                                下: {event.subJerseyNumber || '-'}
+                              </span>
+                            ) : (
+                              event.jerseyNumber || '-'
+                            )}
                           </div>
                         </td>
                         <td>
                           {isEditing ? (
                             <input
                               type="text"
-                              value={goal.goalTime || ''}
-                              onChange={(e) => handleGoalChange('home', index, 'goalTime', e.target.value)}
+                              value={event.description || ''}
+                              onChange={(e) => handleEventChange(index, 'description', e.target.value)}
                               className="form-input inline"
-                              placeholder="如: 第30分钟"
+                              placeholder={event.eventType === 'substitution' ? "选填，自动生成换人描述" : "选填，自动生成事件描述"}
                             />
                           ) : (
-                            <span>{goal.goalTime}</span>
+                            <span>{event.description || '-'}</span>
                           )}
                         </td>
                         {isEditing && (
                           <td>
                             <button
-                              onClick={() => removeGoal('home', index)}
+                              onClick={() => removeEvent(index)}
                               className="delete-btn small"
                             >
                               <X size={14} />
@@ -571,34 +846,41 @@ const MatchViewEditPage: React.FC = () => {
                           </td>
                         )}
                       </tr>
-                    ))
+                    );
+                  })
                   ) : isEditing ? (
                     <tr>
-                      <td colSpan={isEditing ? 4 : 3} className="empty-state-cell">
-                        暂无进球记录，点击上方"添加进球"按钮添加
+                      <td colSpan={6} className="empty-state-cell">
+                        暂无主队事件记录，点击上方"添加主队事件"按钮添加
                       </td>
                     </tr>
-                  ) : null}
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="empty-state-cell">
+                        暂无主队事件记录
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {selectedMatch && (isEditing || (editData?.awayTeamGoals.length || 0) > 0) && (
+        {selectedMatch && (isEditing || (editData?.events.filter(e => e.teamType === 'away').length || 0) > 0) && (
           <div className="form-section">
             <div className="section-header">
               <h2 className="form-title">
                 <span className="icon">👚</span>
-                客队进球记录
+                客队事件记录（进球、换人、红黄牌）
               </h2>
               {isEditing && (
                 <button
-                  onClick={() => addGoal('away')}
+                  onClick={() => addEvent('away')}
                   className="add-btn small"
                 >
                   <Plus size={14} />
-                  添加进球
+                  添加客队事件
                 </button>
               )}
             </div>
@@ -606,56 +888,146 @@ const MatchViewEditPage: React.FC = () => {
               <table className="player-table">
                 <thead>
                   <tr>
-                    <th>进球球员</th>
-                    <th>球衣号码</th>
-                    <th>进球时间</th>
-                    {isEditing && <th>操作</th>}
+                    <th style={{ width: '120px' }}>时间</th>
+                    <th style={{ width: '150px' }}>事件类型</th>
+                    <th style={{ width: '220px' }}>球员</th>
+                    <th style={{ width: '120px' }}>号码</th>
+                    <th>事件描述</th>
+                    {isEditing && <th style={{ width: '60px' }}>操作</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {(editData?.awayTeamGoals.length || 0) > 0 ? (
-                    editData?.awayTeamGoals.map((goal, index) => (
-                      <tr key={index}>
-                        <td>
-                          {isEditing ? (
-                            <select
-                              value={awayTeamPlayers.find(p => p.name === goal.playerName)?.id || ''}
-                              onChange={(e) => handlePlayerSelect('away', index, e.target.value)}
-                              className="form-select inline"
-                            >
-                              <option value="">请选择球员</option>
-                              {awayTeamPlayers.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.name}
-                                </option>
-                              ))}
-                            </select>
+                  {(editData?.events.filter(e => e.teamType === 'away').length || 0) > 0 ? (
+                    editData?.events.map((event, index) => {
+                      if (event.teamType !== 'away') return null;
+                      return (
+                        <tr key={index}>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={event.eventTime || ''}
+                                onChange={(e) => handleEventChange(index, 'eventTime', e.target.value)}
+                                className="form-input inline"
+                                placeholder="如: 35'"
+                                required
+                            />
                           ) : (
-                            <span>{goal.playerName}</span>
+                            <span>{event.eventTime}</span>
                           )}
                         </td>
                         <td>
-                          <div className="form-value inline">
-                            {goal.jerseyNumber || '-'}
+                          {isEditing ? (
+                            <select
+                              value={event.eventType}
+                              onChange={(e) => handleEventChange(index, 'eventType', e.target.value as any)}
+                              className="form-select inline"
+                              required
+                            >
+                              <option value="goal">⚽ 普通进球</option>
+                              <option value="penalty">🎯 点球</option>
+                              <option value="own_goal">🥅 乌龙球</option>
+                              <option value="substitution">🔄 换人</option>
+                              <option value="yellow_card">🟨 黄牌</option>
+                              <option value="red_card">🟥 红牌</option>
+                            </select>
+                          ) : (
+                            <span>
+                              {event.eventType === 'goal' && '⚽ 普通进球'}
+                              {event.eventType === 'penalty' && '🎯 点球'}
+                              {event.eventType === 'own_goal' && '🥅 乌龙球'}
+                              {event.eventType === 'substitution' && '🔄 换人'}
+                              {event.eventType === 'yellow_card' && '🟨 黄牌'}
+                              {event.eventType === 'red_card' && '🟥 红牌'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            event.eventType === 'substitution' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换上球员</option>
+                                  {awayTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换上: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={event.subPlayerId || ''}
+                                  onChange={(e) => handleSubPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换下球员</option>
+                                  {awayTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换下: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <select
+                                value={event.playerId || ''}
+                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                className="form-select inline"
+                                required
+                              >
+                                <option value="">请选择球员</option>
+                                {awayTeamPlayers.map((player) => (
+                                  <option key={player.id} value={player.id}>
+                                    {player.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )
+                          ) : (
+                            event.eventType === 'substitution' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
+                                <span>换上: {event.playerName}</span>
+                                <span>换下: {event.subPlayerName}</span>
+                              </div>
+                            ) : (
+                              <span>{event.playerName}</span>
+                            )
+                          )}
+                        </td>
+                        <td>
+                          <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
+                            {event.eventType === 'substitution' ? (
+                              <span>
+                                上: {event.jerseyNumber || '-'} <br/>
+                                下: {event.subJerseyNumber || '-'}
+                              </span>
+                            ) : (
+                              event.jerseyNumber || '-'
+                            )}
                           </div>
                         </td>
                         <td>
                           {isEditing ? (
                             <input
                               type="text"
-                              value={goal.goalTime || ''}
-                              onChange={(e) => handleGoalChange('away', index, 'goalTime', e.target.value)}
+                              value={event.description || ''}
+                              onChange={(e) => handleEventChange(index, 'description', e.target.value)}
                               className="form-input inline"
-                              placeholder="如: 第30分钟"
+                              placeholder={event.eventType === 'substitution' ? "选填，自动生成换人描述" : "选填，自动生成事件描述"}
                             />
                           ) : (
-                            <span>{goal.goalTime}</span>
+                            <span>{event.description || '-'}</span>
                           )}
                         </td>
                         {isEditing && (
                           <td>
                             <button
-                              onClick={() => removeGoal('away', index)}
+                              onClick={() => removeEvent(index)}
                               className="delete-btn small"
                             >
                               <X size={14} />
@@ -663,14 +1035,21 @@ const MatchViewEditPage: React.FC = () => {
                           </td>
                         )}
                       </tr>
-                    ))
+                    );
+                  })
                   ) : isEditing ? (
                     <tr>
-                      <td colSpan={isEditing ? 4 : 3} className="empty-state-cell">
-                        暂无进球记录，点击上方"添加进球"按钮添加
+                      <td colSpan={6} className="empty-state-cell">
+                        暂无客队事件记录，点击上方"添加客队事件"按钮添加
                       </td>
                     </tr>
-                  ) : null}
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="empty-state-cell">
+                        暂无客队事件记录
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

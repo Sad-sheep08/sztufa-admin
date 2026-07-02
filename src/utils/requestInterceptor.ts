@@ -1,6 +1,6 @@
 import { getAuthToken, isTokenExpired } from '../api/auth';
 
-const BASE_URL = 'https://api.sztufa.xyz/api/v1';
+const BASE_URL = !window.location.hostname.endsWith('sztufa.xyz') ? 'http://localhost:3001/api/v1' : 'https://api.sztufa.xyz/api/v1';
 
 export interface RequestConfig extends RequestInit {
   skipAuth?: boolean;
