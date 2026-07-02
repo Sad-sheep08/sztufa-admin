@@ -59,10 +59,13 @@ export interface Goal {
 export interface MatchEvent {
   id?: string;
   eventTime: string;
-  eventType: 'goal' | 'yellow_card' | 'red_card' | 'substitution';
+  eventType: 'goal' | 'own_goal' | 'penalty' | 'yellow_card' | 'red_card' | 'substitution';
   playerId?: string | null;
   playerName?: string | null;
   jerseyNumber?: string | null;
+  subPlayerId?: string | null;
+  subPlayerName?: string | null;
+  subJerseyNumber?: string | null;
   description: string;
   teamType: 'home' | 'away';
 }

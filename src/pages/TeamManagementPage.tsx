@@ -106,6 +106,22 @@ const TeamManagementPage: React.FC = () => {
     setError(null);
   };
 
+  const handleSubPlayerSelect = (index: number, playerId: string) => {
+    const event = formData.events[index];
+    const players = event.teamType === 'home' ? homeTeamPlayers : awayTeamPlayers;
+    const player = players.find(p => p.id === playerId);
+    
+    const updatedEvents = [...formData.events];
+    updatedEvents[index] = {
+      ...updatedEvents[index],
+      subPlayerId: player?.id || '',
+      subPlayerName: player?.name || '',
+      subJerseyNumber: player?.jerseyNumber || '',
+    };
+    setFormData({ ...formData, events: updatedEvents });
+    setError(null);
+  };
+
   const validateTeamId = async (teamId: string): Promise<boolean> => {
     if (!teamId.trim()) {
       return true;
@@ -164,15 +180,19 @@ const TeamManagementPage: React.FC = () => {
       return false;
     }
 
-    const homeGoalsCount = formData.events.filter(e => e.teamType === 'home' && e.eventType === 'goal').length;
-    const awayGoalsCount = formData.events.filter(e => e.teamType === 'away' && e.eventType === 'goal').length;
+    // 主队总得分 = 主队普通进球 + 主队点球 + 客队乌龙球
+    const homeGoalsCount = formData.events.filter(e => e.teamType === 'home' && (e.eventType === 'goal' || e.eventType === 'penalty')).length +
+                           formData.events.filter(e => e.teamType === 'away' && e.eventType === 'own_goal').length;
+    // 客队总得分 = 客队普通进球 + 客队点球 + 主队乌龙球
+    const awayGoalsCount = formData.events.filter(e => e.teamType === 'away' && (e.eventType === 'goal' || e.eventType === 'penalty')).length +
+                           formData.events.filter(e => e.teamType === 'home' && e.eventType === 'own_goal').length;
 
     if (homeScore !== homeGoalsCount) {
-      setError(`主队进球事件数(${homeGoalsCount})与主队得分(${homeScore})不一致`);
+      setError(`主队进球/点球/对方乌龙数(${homeGoalsCount})与主队得分(${homeScore})不一致`);
       return false;
     }
     if (awayScore !== awayGoalsCount) {
-      setError(`客队进球事件数(${awayGoalsCount})与客队得分(${awayScore})不一致`);
+      setError(`客队进球/点球/对方乌龙数(${awayGoalsCount})与客队得分(${awayScore})不一致`);
       return false;
     }
 
@@ -182,9 +202,24 @@ const TeamManagementPage: React.FC = () => {
           setError('请填写所有事件的时间');
           return false;
         }
-        if (!event.playerId) {
-          setError('请选择所有事件关联的球员');
-          return false;
+        if (event.eventType === 'substitution') {
+          if (!event.playerId) {
+            setError('请选择换人事件的换上球员');
+            return false;
+          }
+          if (!event.subPlayerId) {
+            setError('请选择换人事件的换下球员');
+            return false;
+          }
+          if (event.playerId === event.subPlayerId) {
+            setError('换上球员与换下球员不能相同');
+            return false;
+          }
+        } else {
+          if (!event.playerId) {
+            setError('请选择事件关联的球员');
+            return false;
+          }
         }
       }
     }
@@ -231,21 +266,32 @@ const TeamManagementPage: React.FC = () => {
       const events = formData.events.map(e => ({
         eventTime: e.eventTime,
         eventType: e.eventType,
-        description: e.description,
+        description: e.description || (
+          e.eventType === 'substitution'
+            ? `换上 ${e.playerName} (${e.jerseyNumber}号)，换下 ${e.subPlayerName} (${e.subJerseyNumber}号)`
+            : e.eventType === 'own_goal'
+              ? `乌龙球`
+              : e.eventType === 'penalty'
+                ? `点球`
+                : `进球`
+        ),
         teamType: e.teamType,
         playerId: e.playerId || null,
         playerName: e.playerName || null,
         jerseyNumber: e.jerseyNumber || null,
+        subPlayerId: e.subPlayerId || null,
+        subPlayerName: e.subPlayerName || null,
+        subJerseyNumber: e.subJerseyNumber || null,
       }));
 
-      // 提取进球事件数据，保持 Goal 表同步兼容展示端
+      // 提取所有进球/点球/乌龙球，同步至 Goal 表以向下兼容
       const goals = events
-        .filter(e => e.eventType === 'goal')
+        .filter(e => e.eventType === 'goal' || e.eventType === 'penalty' || e.eventType === 'own_goal')
         .map(e => ({
-          playerName: e.playerName || '',
+          playerName: e.eventType === 'own_goal' ? `${e.playerName} (乌龙)` : e.eventType === 'penalty' ? `${e.playerName} (点球)` : e.playerName || '',
           goalTime: e.eventTime,
           jerseyNumber: e.jerseyNumber || '',
-          teamType: e.teamType,
+          teamType: e.eventType === 'own_goal' ? (e.teamType === 'home' ? 'away' : 'home') : e.teamType,
           playerId: e.playerId || null
         }));
 
@@ -574,8 +620,8 @@ const TeamManagementPage: React.FC = () => {
                     <tr>
                       <th style={{ width: '120px' }}>时间</th>
                       <th style={{ width: '150px' }}>事件类型</th>
-                      <th style={{ width: '180px' }}>球员</th>
-                      <th style={{ width: '100px' }}>号码</th>
+                      <th style={{ width: '220px' }}>球员</th>
+                      <th style={{ width: '120px' }}>号码</th>
                       <th>事件描述</th>
                       <th style={{ width: '80px' }}>操作</th>
                     </tr>
@@ -602,30 +648,70 @@ const TeamManagementPage: React.FC = () => {
                               className="form-select inline"
                               required
                             >
-                              <option value="goal">⚽ 进球</option>
+                              <option value="goal">⚽ 普通进球</option>
+                              <option value="penalty">🎯 点球</option>
+                              <option value="own_goal">🥅 乌龙球</option>
                               <option value="substitution">🔄 换人</option>
                               <option value="yellow_card">🟨 黄牌</option>
                               <option value="red_card">🟥 红牌</option>
                             </select>
                           </td>
                           <td>
-                            <select
-                              value={event.playerId || ''}
-                              onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
-                              className="form-select inline"
-                              required
-                            >
-                              <option value="">请选择球员</option>
-                              {homeTeamPlayers.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.name}
-                                </option>
-                              ))}
-                            </select>
+                            {event.eventType === 'substitution' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换上球员</option>
+                                  {homeTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换上: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={event.subPlayerId || ''}
+                                  onChange={(e) => handleSubPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换下球员</option>
+                                  {homeTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换下: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <select
+                                value={event.playerId || ''}
+                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                className="form-select inline"
+                                required
+                              >
+                                <option value="">请选择球员</option>
+                                {homeTeamPlayers.map((player) => (
+                                  <option key={player.id} value={player.id}>
+                                    {player.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                           <td>
-                            <div className="form-value inline">
-                              {event.jerseyNumber || '-'}
+                            <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
+                              {event.eventType === 'substitution' ? (
+                                <span>
+                                  上: {event.jerseyNumber || '-'} <br/>
+                                  下: {event.subJerseyNumber || '-'}
+                                </span>
+                              ) : (
+                                event.jerseyNumber || '-'
+                              )}
                             </div>
                           </td>
                           <td>
@@ -634,7 +720,7 @@ const TeamManagementPage: React.FC = () => {
                               value={event.description}
                               onChange={(e) => updateEvent(index, 'description', e.target.value)}
                               className="form-input inline"
-                              placeholder="选填描述，如：换上 10号 换下 7号"
+                              placeholder={event.eventType === 'substitution' ? "选填，自动生成换人描述" : "选填，自动生成事件描述"}
                             />
                           </td>
                           <td>
@@ -683,8 +769,8 @@ const TeamManagementPage: React.FC = () => {
                     <tr>
                       <th style={{ width: '120px' }}>时间</th>
                       <th style={{ width: '150px' }}>事件类型</th>
-                      <th style={{ width: '180px' }}>球员</th>
-                      <th style={{ width: '100px' }}>号码</th>
+                      <th style={{ width: '220px' }}>球员</th>
+                      <th style={{ width: '120px' }}>号码</th>
                       <th>事件描述</th>
                       <th style={{ width: '80px' }}>操作</th>
                     </tr>
@@ -711,30 +797,70 @@ const TeamManagementPage: React.FC = () => {
                               className="form-select inline"
                               required
                             >
-                              <option value="goal">⚽ 进球</option>
+                              <option value="goal">⚽ 普通进球</option>
+                              <option value="penalty">🎯 点球</option>
+                              <option value="own_goal">🥅 乌龙球</option>
                               <option value="substitution">🔄 换人</option>
                               <option value="yellow_card">🟨 黄牌</option>
                               <option value="red_card">🟥 红牌</option>
                             </select>
                           </td>
                           <td>
-                            <select
-                              value={event.playerId || ''}
-                              onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
-                              className="form-select inline"
-                              required
-                            >
-                              <option value="">请选择球员</option>
-                              {awayTeamPlayers.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.name}
-                                </option>
-                              ))}
-                            </select>
+                            {event.eventType === 'substitution' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换上球员</option>
+                                  {awayTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换上: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={event.subPlayerId || ''}
+                                  onChange={(e) => handleSubPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择换下球员</option>
+                                  {awayTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      换下: {player.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <select
+                                value={event.playerId || ''}
+                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                className="form-select inline"
+                                required
+                              >
+                                <option value="">请选择球员</option>
+                                {awayTeamPlayers.map((player) => (
+                                  <option key={player.id} value={player.id}>
+                                    {player.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                           <td>
-                            <div className="form-value inline">
-                              {event.jerseyNumber || '-'}
+                            <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
+                              {event.eventType === 'substitution' ? (
+                                <span>
+                                  上: {event.jerseyNumber || '-'} <br/>
+                                  下: {event.subJerseyNumber || '-'}
+                                </span>
+                              ) : (
+                                event.jerseyNumber || '-'
+                              )}
                             </div>
                           </td>
                           <td>
@@ -743,7 +869,7 @@ const TeamManagementPage: React.FC = () => {
                               value={event.description}
                               onChange={(e) => updateEvent(index, 'description', e.target.value)}
                               className="form-input inline"
-                              placeholder="选填描述，如：换上 10号 换下 7号"
+                              placeholder={event.eventType === 'substitution' ? "选填，自动生成换人描述" : "选填，自动生成事件描述"}
                             />
                           </td>
                           <td>
