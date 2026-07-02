@@ -15,6 +15,7 @@ const TeamManagementPage: React.FC = () => {
     awayTeamScore: '',
     homeTeamGoals: [],
     awayTeamGoals: [],
+    events: [],
     homeTeamId: '',
     awayTeamId: '',
     matchDate: '',
@@ -129,6 +130,35 @@ const TeamManagementPage: React.FC = () => {
     setError(null);
   };
 
+  const addEvent = () => {
+    const newEvent = {
+      eventTime: '',
+      eventType: 'substitution' as const,
+      description: '',
+      teamType: 'none' as const,
+    };
+    setFormData({
+      ...formData,
+      events: [...(formData.events || []), newEvent],
+    });
+    setError(null);
+  };
+
+  const removeEvent = (index: number) => {
+    setFormData({
+      ...formData,
+      events: formData.events.filter((_, i) => i !== index),
+    });
+    setError(null);
+  };
+
+  const updateEvent = (index: number, field: any, value: string) => {
+    const updatedEvents = [...formData.events];
+    updatedEvents[index] = { ...updatedEvents[index], [field]: value } as any;
+    setFormData({ ...formData, events: updatedEvents });
+    setError(null);
+  };
+
   const validateTeamId = async (teamId: string): Promise<boolean> => {
     if (!teamId.trim()) {
       return true;
@@ -221,6 +251,19 @@ const TeamManagementPage: React.FC = () => {
       }
     }
 
+    if (formData.events) {
+      for (const event of formData.events) {
+        if (!event.eventTime.trim()) {
+          setError('请填写所有事件的时间');
+          return false;
+        }
+        if (!event.description.trim()) {
+          setError('请填写所有事件的描述');
+          return false;
+        }
+      }
+    }
+
     return true;
   };
 
@@ -259,6 +302,32 @@ const TeamManagementPage: React.FC = () => {
 
       const matchDate = new Date(formData.matchTime).toISOString();
 
+      // 映射进球数据
+      const goals = [
+        ...formData.homeTeamGoals.map(g => ({
+          playerName: g.playerName,
+          goalTime: g.goalTime,
+          jerseyNumber: g.jerseyNumber,
+          teamType: 'home',
+          playerId: homeTeamPlayers.find(p => p.name === g.playerName)?.id || null
+        })),
+        ...formData.awayTeamGoals.map(g => ({
+          playerName: g.playerName,
+          goalTime: g.goalTime,
+          jerseyNumber: g.jerseyNumber,
+          teamType: 'away',
+          playerId: awayTeamPlayers.find(p => p.name === g.playerName)?.id || null
+        }))
+      ];
+
+      // 映射事件数据
+      const events = formData.events.map(e => ({
+        eventTime: e.eventTime,
+        eventType: e.eventType,
+        description: e.description,
+        teamType: e.teamType
+      }));
+
       const matchDTO: MatchDTO = {
         homeTeamId: formData.homeTeamId,
         awayTeamId: formData.awayTeamId,
@@ -267,13 +336,15 @@ const TeamManagementPage: React.FC = () => {
         matchDate: matchDate,
         location: formData.location,
         status: 'finished',
+        goals: goals,
+        events: events,
       };
 
       console.log('正在提交比赛数据到后端:', matchDTO);
       const response = await matchApi.create(matchDTO);
 
       const savedData = response;
-      const match: Match = {
+       const match: Match = {
         id: savedData.id || generateId(),
         matchName: `${savedData.homeTeam?.teamName || '主队'} vs ${savedData.awayTeam?.teamName || '客队'}`,
         matchTime: savedData.matchDate,
@@ -281,6 +352,7 @@ const TeamManagementPage: React.FC = () => {
         awayScore: savedData.awayScore,
         homeTeamGoals: [],
         awayTeamGoals: [],
+        events: savedData.events || [],
         homeTeamId: savedData.homeTeamId,
         awayTeamId: savedData.awayTeamId,
         homeTeamName: savedData.homeTeam?.teamName,
@@ -702,6 +774,110 @@ const TeamManagementPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => removeGoal('away', index)}
+                            className="delete-btn"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="form-section">
+            <div className="section-header">
+              <h2 className="form-title">
+                <span className="icon">🏃</span>
+                比赛事件记录（换人、红黄牌、补水）
+              </h2>
+              <button
+                type="button"
+                onClick={addEvent}
+                className="add-btn"
+              >
+                <Plus size={16} />
+                添加事件
+              </button>
+            </div>
+            {(!formData.events || formData.events.length === 0) ? (
+              <div className="empty-state">
+                <Calendar size={48} />
+                <p>暂无事件记录，点击上方按钮添加</p>
+              </div>
+            ) : (
+              <div className="player-table-wrapper">
+                <table className="player-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '120px' }}>时间</th>
+                      <th style={{ width: '160px' }}>事件类型</th>
+                      <th style={{ width: '140px' }}>涉及队伍</th>
+                      <th>事件描述</th>
+                      <th style={{ width: '80px' }}>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.events.map((event, index) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="text"
+                            value={event.eventTime}
+                            onChange={(e) => updateEvent(index, 'eventTime', e.target.value)}
+                            className="form-input inline"
+                            placeholder="如：45'"
+                            required
+                          />
+                        </td>
+                        <td>
+                          <select
+                            value={event.eventType}
+                            onChange={(e) => updateEvent(index, 'eventType', e.target.value as any)}
+                            className="form-select inline"
+                            required
+                          >
+                            <option value="substitution">🔄 换人</option>
+                            <option value="yellow_card">🟨 黄牌</option>
+                            <option value="red_card">🟥 红牌</option>
+                            <option value="water_break">💧 补水</option>
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            value={event.teamType}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateEvent(index, 'teamType', val);
+                              const teamText = val === 'home' ? '主队' : val === 'away' ? '客队' : '';
+                              if (!event.description.trim() || event.description === '主队 ' || event.description === '客队 ') {
+                                updateEvent(index, 'description', teamText ? `${teamText} ` : '');
+                              }
+                            }}
+                            className="form-select inline"
+                            required
+                          >
+                            <option value="none">无 (如整体补水)</option>
+                            <option value="home">主队</option>
+                            <option value="away">客队</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={event.description}
+                            onChange={(e) => updateEvent(index, 'description', e.target.value)}
+                            className="form-input inline"
+                            placeholder="如：主队 10号换下7号 / 裁判暂停补水"
+                            required
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => removeEvent(index)}
                             className="delete-btn"
                           >
                             <Trash2 size={14} />

@@ -56,6 +56,14 @@ export interface Goal {
   jerseyNumber: string;
 }
 
+export interface MatchEvent {
+  id?: string;
+  eventTime: string;
+  eventType: 'yellow_card' | 'red_card' | 'substitution' | 'water_break';
+  description: string;
+  teamType: 'home' | 'away' | 'none';
+}
+
 export interface Match {
   id: string;
   matchName: string;
@@ -72,6 +80,7 @@ export interface Match {
   awayTeamScore?: number;
   homeTeamGoals: Goal[];
   awayTeamGoals: Goal[];
+  events: MatchEvent[];
   matchDate?: string;
   location: string;
   status: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';
@@ -90,6 +99,7 @@ export interface MatchFormData {
   awayTeamScore: string;
   homeTeamGoals: Goal[];
   awayTeamGoals: Goal[];
+  events: MatchEvent[];
   matchDate: string;
   location: string;
   status?: string;
