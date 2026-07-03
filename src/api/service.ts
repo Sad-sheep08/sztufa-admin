@@ -1,6 +1,6 @@
 import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, PlayerDTO, TeamListResponse, MatchListResponse, PlayerListResponse, ImportResult, AuthResponse } from './types';
 
-const BASE_URL = 'https://api.sztufa.xyz/api/v1';
+const BASE_URL = !window.location.hostname.endsWith('sztufa.xyz') ? 'http://localhost:3001/api/v1' : 'https://api.sztufa.xyz/api/v1';
 
 const getAuthToken = (): string | null => {
   return localStorage.getItem('token') || null;
@@ -255,6 +255,26 @@ export const importApi = {
       body: JSON.stringify({ filePath }),
     });
     return handleResponse<ApiResponse<{ result: ImportResult }>>(response);
+  },
+};
+
+export const uploadApi = {
+  upload: async (file: File): Promise<ApiResponse<{ url: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const headers = new Headers();
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const response = await fetch(`${BASE_URL}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    return handleResponse<ApiResponse<{ url: string }>>(response);
   },
 };
 

@@ -63,6 +63,8 @@ export interface MatchDTO {
   status?: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';
   homeTeam?: TeamDTO;
   awayTeam?: TeamDTO;
+  goals?: any[];
+  events?: any[];
   createdAt?: string;
   updatedAt?: string;
 }

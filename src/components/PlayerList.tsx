@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, User, Upload } from 'lucide-react';
 import { Player, PlayerFormData } from '../types';
+import { uploadApi } from '../api/service';
 
 interface PlayerListProps {
   players: Player[];
@@ -27,13 +28,19 @@ const PlayerList: React.FC<PlayerListProps> = ({
 
   const handleFileChange = async (file: File | null) => {
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => setPreview(e.target?.result as string);
-      reader.readAsDataURL(file);
+      try {
+        const response = await uploadApi.upload(file);
+        if (response.data && response.data.url) {
+          setPreview(response.data.url);
+          setNewPlayer((prev) => ({ ...prev, photo: file }));
+        }
+      } catch (err) {
+        alert('图片上传失败');
+      }
     } else {
       setPreview(null);
+      setNewPlayer((prev) => ({ ...prev, photo: null }));
     }
-    setNewPlayer((prev) => ({ ...prev, photo: file }));
   };
 
   const handleAddPlayer = () => {
@@ -55,13 +62,16 @@ const PlayerList: React.FC<PlayerListProps> = ({
     setNewPlayer((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePlayerPhotoUpload = (playerId: string, file: File | null) => {
+  const handlePlayerPhotoUpload = async (playerId: string, file: File | null) => {
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        onUpdatePlayer(playerId, { photo: e.target?.result as string });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const response = await uploadApi.upload(file);
+        if (response.data && response.data.url) {
+          onUpdatePlayer(playerId, { photo: response.data.url });
+        }
+      } catch (err) {
+        alert('图片上传失败');
+      }
     }
   };
 
