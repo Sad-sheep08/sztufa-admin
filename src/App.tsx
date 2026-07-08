@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Trophy, Calendar, BarChart3, Users, LogOut } from 'lucide-react';
+import { Trophy, Calendar, BarChart3, Users, LogOut, ShieldAlert, Database } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import TeamInfoPage from './pages/TeamInfoPage';
 import MatchSchedulePage from './pages/MatchSchedulePage';
@@ -8,12 +8,16 @@ import ScoreStatisticsPage from './pages/ScoreStatisticsPage';
 import TeamManagementPage from './pages/TeamManagementPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import AuditLogPage from './pages/AuditLogPage';
+import SystemSettingsPage from './pages/SystemSettingsPage';
 
 const navItems = [
   { path: '/', label: '球队信息录入', icon: Trophy },
   { path: '/teams', label: '比赛信息录入', icon: Calendar },
   { path: '/schedule', label: '球队信息管理', icon: Users },
   { path: '/statistics', label: '比赛信息管理', icon: BarChart3 },
+  { path: '/audit-logs', label: '操作审计日志', icon: ShieldAlert },
+  { path: '/settings', label: '数据安全备份', icon: Database },
 ];
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -112,10 +116,12 @@ const AppContent: React.FC = () => {
             <div className="app">
               <Navigation />
               <Routes>
-                <Route path="/" element={<TeamInfoPage />} />
-                <Route path="/teams" element={<TeamManagementPage />} />
-                <Route path="/schedule" element={<MatchSchedulePage />} />
-                <Route path="/statistics" element={<ScoreStatisticsPage />} />
+                 <Route path="/" element={<TeamInfoPage />} />
+                 <Route path="/teams" element={<TeamManagementPage />} />
+                 <Route path="/schedule" element={<MatchSchedulePage />} />
+                 <Route path="/statistics" element={<ScoreStatisticsPage />} />
+                 <Route path="/audit-logs" element={<AuditLogPage />} />
+                 <Route path="/settings" element={<SystemSettingsPage />} />
               </Routes>
             </div>
           </ProtectedRoute>

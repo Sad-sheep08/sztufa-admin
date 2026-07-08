@@ -4,6 +4,9 @@ export interface Player {
   studentId: string;
   jerseyNumber: string;
   photo: string | null;
+  status?: string;
+  yellowCards?: number;
+  redCards?: number;
   teamId: string;
   team?: Team;
   createdAt?: string;

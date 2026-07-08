@@ -1,4 +1,4 @@
-import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, PlayerDTO, TeamListResponse, MatchListResponse, PlayerListResponse, ImportResult, AuthResponse } from './types';
+import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, PlayerDTO, TeamListResponse, MatchListResponse, PlayerListResponse, ImportResult, AuthResponse, AuditLogDTO, BackupDTO } from './types';
 
 const BASE_URL = !window.location.hostname.endsWith('sztufa.xyz') ? 'http://localhost:3001/api/v1' : 'https://api.sztufa.xyz/api/v1';
 
@@ -275,6 +275,41 @@ export const uploadApi = {
       body: formData,
     });
     return handleResponse<ApiResponse<{ url: string }>>(response);
+  },
+};
+
+export const auditLogApi = {
+  getAll: async (page = 1, limit = 20): Promise<{ data: AuditLogDTO[]; total: number; page: number; limit: number }> => {
+    const response = await fetch(`${BASE_URL}/audit-logs?page=${page}&limit=${limit}`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<{ data: AuditLogDTO[]; total: number; page: number; limit: number }>(response);
+  },
+};
+
+export const backupApi = {
+  create: async (): Promise<{ success: boolean; downloadUrl: string }> => {
+    const response = await fetch(`${BASE_URL}/backups/create`, {
+      method: 'POST',
+      headers: createHeaders(),
+    });
+    return handleResponse<{ success: boolean; downloadUrl: string }>(response);
+  },
+  list: async (): Promise<{ success: boolean; data: BackupDTO[] }> => {
+    const response = await fetch(`${BASE_URL}/backups/list`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<{ success: boolean; data: BackupDTO[] }>(response);
+  },
+  restore: async (key: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${BASE_URL}/backups/restore`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ key }),
+    });
+    return handleResponse<{ success: boolean; message: string }>(response);
   },
 };
 

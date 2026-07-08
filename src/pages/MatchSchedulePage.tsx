@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, Plus, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelImporter from '../components/ExcelImporter';
-import { teamApi, playerApi } from '../api/service';
+import { teamApi, playerApi, matchApi } from '../api/service';
 import { TeamDTO, PlayerDTO } from '../api/types';
 import { Team, Player } from '../types';
 import { generateId } from '../utils';
@@ -17,10 +17,52 @@ const TeamViewEditPage: React.FC = () => {
 
   const [editData, setEditData] = useState<Team | null>(null);
   const [showImporter, setShowImporter] = useState(false);
+  const [allMatches, setAllMatches] = useState<any[]>([]);
 
   useEffect(() => {
     loadTeams();
+    loadMatches();
   }, []);
+
+  const loadMatches = async () => {
+    try {
+      const response = await matchApi.getAll(1, 100);
+      setAllMatches(response.data || []);
+    } catch (err) {
+      console.error('加载比赛记录失败:', err);
+    }
+  };
+
+  const getTeamStats = (teamId: string) => {
+    // 找出所有与该球队相关的已结束比赛，按时间升序（从旧到新）
+    const teamMatches = allMatches
+      .filter(m => (m.homeTeamId === teamId || m.awayTeamId === teamId) && m.status === 'finished')
+      .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+
+    // 零封场次统计
+    let cleanSheets = 0;
+    teamMatches.forEach(m => {
+      if (m.homeTeamId === teamId && m.awayScore === 0) {
+        cleanSheets++;
+      } else if (m.awayTeamId === teamId && m.homeScore === 0) {
+        cleanSheets++;
+      }
+    });
+
+    // 最近5场战绩走势 (W/D/L)
+    const recentMatches = teamMatches.slice(-5);
+    const form = recentMatches.map(m => {
+      const isHome = m.homeTeamId === teamId;
+      const teamScore = isHome ? m.homeScore : m.awayScore;
+      const opponentScore = isHome ? m.awayScore : m.homeScore;
+
+      if (teamScore > opponentScore) return 'W'; // 胜
+      if (teamScore === opponentScore) return 'D'; // 平
+      return 'L'; // 负
+    });
+
+    return { cleanSheets, form };
+  };
 
   const loadTeams = async () => {
     setIsLoading(true);
@@ -45,6 +87,9 @@ const TeamViewEditPage: React.FC = () => {
           studentId: p.studentId,
           jerseyNumber: p.jerseyNumber,
           photo: p.photo || null,
+          status: p.status || 'active',
+          yellowCards: p.yellowCards || 0,
+          redCards: p.redCards || 0,
           teamId: p.teamId || '',
         })) || [],
       }));
@@ -139,19 +184,28 @@ const TeamViewEditPage: React.FC = () => {
             name: p.name,
             studentId: p.studentId,
             jerseyNumber: p.jerseyNumber,
+            status: p.status || 'active',
+            yellowCards: Number(p.yellowCards) || 0,
+            redCards: Number(p.redCards) || 0,
             teamId: editData.id,
           };
           await playerApi.create(playerDTO);
         } else if (
           original.name !== p.name ||
           original.studentId !== p.studentId ||
-          original.jerseyNumber !== p.jerseyNumber
+          original.jerseyNumber !== p.jerseyNumber ||
+          original.status !== p.status ||
+          Number(original.yellowCards) !== Number(p.yellowCards) ||
+          Number(original.redCards) !== Number(p.redCards)
         ) {
           // 更新球员信息
           const playerDTO = {
             name: p.name,
             studentId: p.studentId,
             jerseyNumber: p.jerseyNumber,
+            status: p.status || 'active',
+            yellowCards: Number(p.yellowCards) || 0,
+            redCards: Number(p.redCards) || 0,
             teamId: editData.id,
           };
           await playerApi.update(p.id, playerDTO);
@@ -171,6 +225,9 @@ const TeamViewEditPage: React.FC = () => {
           studentId: p.studentId,
           jerseyNumber: p.jerseyNumber,
           photo: p.photo || null,
+          status: p.status || 'active',
+          yellowCards: p.yellowCards || 0,
+          redCards: p.redCards || 0,
           teamId: p.teamId || '',
         })),
       };
@@ -221,7 +278,7 @@ const TeamViewEditPage: React.FC = () => {
     }
   };
 
-  const handlePlayerFieldChange = (index: number, field: keyof Player, value: string) => {
+  const handlePlayerFieldChange = (index: number, field: keyof Player, value: any) => {
     if (editData) {
       const players = [...(editData.players || [])];
       players[index] = { ...players[index], [field]: value } as Player;
@@ -493,6 +550,53 @@ const TeamViewEditPage: React.FC = () => {
                   <div className="form-value">{selectedTeam.awayJerseyColor}</div>
                 )}
               </div>
+              
+              {!isEditing && (
+                <div className="form-group" style={{ gridColumn: 'span 3', marginTop: '10px' }}>
+                  <label>赛季数据与战绩走势</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '8px' }}>
+                    <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', padding: '8px 16px', borderRadius: '6px', fontSize: '14px', color: '#495057' }}>
+                      零封场次: <strong style={{ color: '#2b8a3e', fontSize: '16px' }}>{getTeamStats(selectedTeam.id).cleanSheets}</strong> 场
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', color: '#495057' }}>最近战绩:</span>
+                      {getTeamStats(selectedTeam.id).form.length === 0 ? (
+                        <span style={{ fontSize: '13px', color: '#868e96', fontStyle: 'italic' }}>暂无已结束比赛</span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {getTeamStats(selectedTeam.id).form.map((result, idx) => {
+                            let color = '#868e96'; // D (Gray)
+                            let label = '平';
+                            if (result === 'W') { color = '#2b8a3e'; label = '胜'; }
+                            else if (result === 'L') { color = '#fa5252'; label = '负'; }
+                            return (
+                              <span 
+                                key={idx} 
+                                style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  width: '24px', 
+                                  height: '24px', 
+                                  borderRadius: '50%', 
+                                  background: color, 
+                                  color: '#fff', 
+                                  fontSize: '11px', 
+                                  fontWeight: 'bold',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                                title={result === 'W' ? '胜利' : result === 'L' ? '失败' : '平局'}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -518,13 +622,16 @@ const TeamViewEditPage: React.FC = () => {
                     <th>姓名</th>
                     <th>学号</th>
                     <th>球衣号码</th>
+                    <th>黄牌数</th>
+                    <th>红牌数</th>
+                    <th>可用状态</th>
                     {isEditing && <th>操作</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {isEditing ? (
                     editData?.players?.map((player, index) => (
-                      <tr key={player.id || index}>
+                      <tr key={player.id || index} style={player.status === 'suspended' ? { background: '#fff5f5' } : undefined}>
                         <td>
                           <input
                             type="text"
@@ -556,6 +663,37 @@ const TeamViewEditPage: React.FC = () => {
                           />
                         </td>
                         <td>
+                          <input
+                            type="number"
+                            min="0"
+                            value={player.yellowCards || 0}
+                            onChange={(e) => handlePlayerFieldChange(index, 'yellowCards', parseInt(e.target.value) || 0)}
+                            className="form-input"
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '70px' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            value={player.redCards || 0}
+                            onChange={(e) => handlePlayerFieldChange(index, 'redCards', parseInt(e.target.value) || 0)}
+                            className="form-input"
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '70px' }}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            value={player.status || 'active'}
+                            onChange={(e) => handlePlayerFieldChange(index, 'status', e.target.value)}
+                            className="form-input"
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100px' }}
+                          >
+                            <option value="active">🟢 可用</option>
+                            <option value="suspended">🔴 停赛</option>
+                          </select>
+                        </td>
+                        <td>
                           <button
                             onClick={() => handleDeletePlayerRow(index)}
                             className="delete-btn small"
@@ -568,11 +706,27 @@ const TeamViewEditPage: React.FC = () => {
                       </tr>
                     ))
                   ) : (
-                    selectedTeam.players?.map((player) => (
-                      <tr key={player.id}>
-                        <td>{player.name}</td>
+                    (selectedTeam.players || []).map((player) => (
+                      <tr key={player.id} style={player.status === 'suspended' ? { background: '#fff5f5' } : undefined}>
+                        <td style={{ fontWeight: player.status === 'suspended' ? 600 : undefined }}>
+                          {player.name}
+                          {player.status === 'suspended' && (
+                            <span style={{ marginLeft: '8px', color: '#fa5252', fontSize: '11px', fontWeight: 'normal', background: '#ffe3e3', padding: '2px 6px', borderRadius: '4px' }}>
+                              🛑 停赛
+                            </span>
+                          )}
+                        </td>
                         <td>{player.studentId}</td>
                         <td>{player.jerseyNumber}</td>
+                        <td>🟨 {player.yellowCards || 0}</td>
+                        <td>🟥 {player.redCards || 0}</td>
+                        <td>
+                          {player.status === 'suspended' ? (
+                            <span style={{ color: '#fa5252', fontWeight: 600 }}>停赛中</span>
+                          ) : (
+                            <span style={{ color: '#2b8a3e' }}>可用</span>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}
