@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
-import { teamApi } from '../api/service';
+import { Users, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, Plus, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import ExcelImporter from '../components/ExcelImporter';
+import { teamApi, playerApi } from '../api/service';
 import { TeamDTO, PlayerDTO } from '../api/types';
-import { Team } from '../types';
+import { Team, Player } from '../types';
 import { generateId } from '../utils';
 
 const TeamViewEditPage: React.FC = () => {
@@ -14,6 +16,7 @@ const TeamViewEditPage: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   const [editData, setEditData] = useState<Team | null>(null);
+  const [showImporter, setShowImporter] = useState(false);
 
   useEffect(() => {
     loadTeams();
@@ -67,7 +70,10 @@ const TeamViewEditPage: React.FC = () => {
 
   const handleEditTeam = (team: Team) => {
     setSelectedTeam(team);
-    setEditData({ ...team });
+    setEditData({
+      ...team,
+      players: team.players ? team.players.map((p) => ({ ...p })) : [],
+    });
     setIsEditing(true);
     setError(null);
     setIsSaved(false);
@@ -76,7 +82,27 @@ const TeamViewEditPage: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!editData) return;
 
+    // 校验球员名单格式是否完整
+    if (editData.players) {
+      for (let i = 0; i < editData.players.length; i++) {
+        const p = editData.players[i];
+        if (!p.name.trim()) {
+          setError(`第 ${i + 1} 个球员的姓名不能为空`);
+          return;
+        }
+        if (!p.studentId.trim()) {
+          setError(`第 ${i + 1} 个球员的学号不能为空`);
+          return;
+        }
+        if (!p.jerseyNumber.trim()) {
+          setError(`第 ${i + 1} 个球员的球衣号码不能为空`);
+          return;
+        }
+      }
+    }
+
     setIsLoading(true);
+    setError(null);
     try {
       const editTeamDTO = {
         teamName: editData.teamName,
@@ -89,9 +115,67 @@ const TeamViewEditPage: React.FC = () => {
         awayJerseyColor: editData.awayJerseyColor,
       };
 
+      // 1. 保存球队基本信息
       await teamApi.update(editData.id, editTeamDTO);
+
+      // 2. 比对并同步球员信息
+      const originalPlayers = selectedTeam?.players || [];
+      const currentPlayers = editData.players || [];
+
+      // 2a. 删除已移除的球员
+      const playersToDelete = originalPlayers.filter(
+        op => !currentPlayers.some(cp => cp.id === op.id)
+      );
+      for (const p of playersToDelete) {
+        await playerApi.delete(p.id);
+      }
+
+      // 2b. 新建或更新现存球员
+      for (const p of currentPlayers) {
+        const original = originalPlayers.find(op => op.id === p.id);
+        if (!original) {
+          // 新增球员 (ID由后端生成，不传ID)
+          const playerDTO = {
+            name: p.name,
+            studentId: p.studentId,
+            jerseyNumber: p.jerseyNumber,
+            teamId: editData.id,
+          };
+          await playerApi.create(playerDTO);
+        } else if (
+          original.name !== p.name ||
+          original.studentId !== p.studentId ||
+          original.jerseyNumber !== p.jerseyNumber
+        ) {
+          // 更新球员信息
+          const playerDTO = {
+            name: p.name,
+            studentId: p.studentId,
+            jerseyNumber: p.jerseyNumber,
+            teamId: editData.id,
+          };
+          await playerApi.update(p.id, playerDTO);
+        }
+      }
+
       setIsSaved(true);
       setError(null);
+      
+      // 更新当前选中的球队状态，防止再次点击时读取旧状态
+      const updatedPlayersResponse = await playerApi.getAll(1, 100, editData.id);
+      const updatedTeam = {
+        ...editData,
+        players: updatedPlayersResponse.data.map((p: PlayerDTO) => ({
+          id: p.id || generateId(),
+          name: p.name,
+          studentId: p.studentId,
+          jerseyNumber: p.jerseyNumber,
+          photo: p.photo || null,
+          teamId: p.teamId || '',
+        })),
+      };
+      setSelectedTeam(updatedTeam);
+
       loadTeams();
       setTimeout(() => {
         setIsSaved(false);
@@ -99,8 +183,8 @@ const TeamViewEditPage: React.FC = () => {
         setEditData(null);
       }, 2000);
     } catch (err) {
-      console.error('更新球队信息失败:', err);
-      setError('网络连接失败，请稍后重试');
+      console.error('更新系统信息失败:', err);
+      setError('更新失败，网络连接错误或学号已被占用');
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +219,60 @@ const TeamViewEditPage: React.FC = () => {
     if (editData) {
       setEditData({ ...editData, [field]: value });
     }
+  };
+
+  const handlePlayerFieldChange = (index: number, field: keyof Player, value: string) => {
+    if (editData) {
+      const players = [...(editData.players || [])];
+      players[index] = { ...players[index], [field]: value } as Player;
+      setEditData({ ...editData, players });
+    }
+  };
+
+  const handleDeletePlayerRow = (index: number) => {
+    if (editData) {
+      const players = (editData.players || []).filter((_, i) => i !== index);
+      setEditData({ ...editData, players });
+    }
+  };
+
+  const handleAddPlayerRow = () => {
+    if (editData) {
+      const newPlayer: Player = {
+        id: `temp_${Date.now()}`,
+        name: '',
+        studentId: '',
+        jerseyNumber: '',
+        photo: null,
+        teamId: editData.id,
+      };
+      setEditData({ ...editData, players: [...(editData.players || []), newPlayer] });
+    }
+  };
+
+  const handleExcelImport = (importedPlayers: Omit<Player, 'id'>[]) => {
+    if (editData) {
+      const newPlayers = importedPlayers.map((p) => ({
+        ...p,
+        id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        teamId: editData.id,
+      }));
+      setEditData({ ...editData, players: [...(editData.players || []), ...newPlayers] });
+      setShowImporter(false);
+    }
+  };
+
+  const handleExportPlayers = () => {
+    if (!selectedTeam) return;
+    const exportData = (selectedTeam.players || []).map((p) => ({
+      '姓名': p.name,
+      '学号': p.studentId,
+      '球衣号码': p.jerseyNumber,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '球员名单');
+    XLSX.writeFile(workbook, `${selectedTeam.teamName}_球员名单.xlsx`);
   };
 
   return (
@@ -359,12 +497,20 @@ const TeamViewEditPage: React.FC = () => {
           </div>
         )}
 
-        {selectedTeam && selectedTeam.players && selectedTeam.players.length > 0 && (
+        {selectedTeam && (isEditing || (selectedTeam.players && selectedTeam.players.length > 0)) && (
           <div className="form-section">
-            <h2 className="form-title">
-              <span className="icon">👥</span>
-              球员名单 ({selectedTeam.players.length}人)
-            </h2>
+            <div className="section-header" style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className="form-title" style={{ margin: 0 }}>
+                <span className="icon">👥</span>
+                球员名单 ({isEditing ? (editData?.players?.length || 0) : (selectedTeam.players?.length || 0)}人)
+              </h2>
+              {!isEditing && (
+                <button onClick={handleExportPlayers} className="add-btn small refresh-btn" style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', height: 'auto' }}>
+                  <Download size={14} />
+                  导出名单
+                </button>
+              )}
+            </div>
             <div className="player-table-wrapper">
               <table className="player-table">
                 <thead>
@@ -372,19 +518,90 @@ const TeamViewEditPage: React.FC = () => {
                     <th>姓名</th>
                     <th>学号</th>
                     <th>球衣号码</th>
+                    {isEditing && <th>操作</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedTeam.players?.map((player) => (
-                    <tr key={player.id}>
-                      <td>{player.name}</td>
-                      <td>{player.studentId}</td>
-                      <td>{player.jerseyNumber}</td>
-                    </tr>
-                  ))}
+                  {isEditing ? (
+                    editData?.players?.map((player, index) => (
+                      <tr key={player.id || index}>
+                        <td>
+                          <input
+                            type="text"
+                            value={player.name}
+                            onChange={(e) => handlePlayerFieldChange(index, 'name', e.target.value)}
+                            className="form-input"
+                            placeholder="姓名"
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={player.studentId}
+                            onChange={(e) => handlePlayerFieldChange(index, 'studentId', e.target.value)}
+                            className="form-input"
+                            placeholder="学号"
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={player.jerseyNumber}
+                            onChange={(e) => handlePlayerFieldChange(index, 'jerseyNumber', e.target.value)}
+                            className="form-input"
+                            placeholder="号码"
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px' }}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => handleDeletePlayerRow(index)}
+                            className="delete-btn small"
+                            title="删除"
+                            style={{ padding: '6px 10px', height: '32px' }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    selectedTeam.players?.map((player) => (
+                      <tr key={player.id}>
+                        <td>{player.name}</td>
+                        <td>{player.studentId}</td>
+                        <td>{player.jerseyNumber}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {isEditing && (
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                <button onClick={handleAddPlayerRow} className="add-btn small" style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', height: 'auto' }}>
+                  <Plus size={14} />
+                  添加单个球员
+                </button>
+                <button 
+                  onClick={() => setShowImporter(!showImporter)} 
+                  className="add-btn small refresh-btn" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', height: 'auto' }}
+                >
+                  <Users size={14} />
+                  {showImporter ? '隐藏批量导入' : 'Excel 批量追加'}
+                </button>
+              </div>
+            )}
+
+            {isEditing && showImporter && (
+              <div style={{ marginTop: '20px', padding: '20px', border: '1px dashed #ddd', borderRadius: '8px', background: '#fcfcfc' }}>
+                <ExcelImporter onImport={handleExcelImport} />
+              </div>
+            )}
           </div>
         )}
 
