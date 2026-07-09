@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Download, RotateCcw, AlertTriangle, FileCheck, RefreshCw, Calendar, Users, ShieldAlert, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { Database, Download, RotateCcw, AlertTriangle, FileCheck, RefreshCw, Calendar, Users, ShieldAlert, Plus, Trash2, CheckCircle2, Key } from 'lucide-react';
 import { backupApi, seasonApi, userApi, teamApi, authApi } from '../api/service';
 import { BackupDTO, TeamDTO } from '../api/types';
 
@@ -123,6 +123,26 @@ const SystemSettingsPage: React.FC = () => {
     } catch (err) {
       console.error('删除用户失败:', err);
       setUserError(err instanceof Error ? err.message : '删除用户失败');
+    }
+  };
+
+  const handleResetPassword = async (userId: string, username: string) => {
+    const newPass = prompt(`请输入为用户“${username}”设置的新密码（最少6个字符）：`);
+    if (newPass === null) return; // 用户取消
+    const trimmedPass = newPass.trim();
+    if (trimmedPass.length < 6) {
+      alert('重置密码失败：密码长度不能少于6个字符！');
+      return;
+    }
+    setUserError(null);
+    setUserSuccess(null);
+    try {
+      await userApi.resetPassword(userId, trimmedPass);
+      setUserSuccess(`已成功将用户“${username}”的密码重置为您输入的新密码！`);
+      setTimeout(() => setUserSuccess(null), 3000);
+    } catch (err) {
+      console.error('重置密码失败:', err);
+      setUserError(err instanceof Error ? err.message : '重置密码失败');
     }
   };
 
@@ -704,6 +724,14 @@ const SystemSettingsPage: React.FC = () => {
                                   style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', height: 'auto', margin: 0 }}
                                 >
                                   保存
+                                </button>
+                                <button
+                                  onClick={() => handleResetPassword(u.id, u.username)}
+                                  className="add-btn small"
+                                  style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', height: 'auto', margin: 0, backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#fff' }}
+                                >
+                                  <Key size={12} style={{ marginRight: '3px' }} />
+                                  重置
                                 </button>
                                 <button
                                   onClick={() => handleDeleteUser(u.id, u.username)}

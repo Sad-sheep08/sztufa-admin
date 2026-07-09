@@ -275,6 +275,15 @@ export const userApi = {
     });
     return handleResponse<any>(response);
   },
+
+  resetPassword: async (id: string, password: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/auth/users/${id}/reset-password`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify({ password }),
+    });
+    return handleResponse<any>(response);
+  },
 };
 
 export const importApi = {
