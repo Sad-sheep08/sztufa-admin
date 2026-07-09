@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, MapPin, Plus, X } from 'lucide-react';
-import { matchApi, playerApi } from '../api/service';
+import { matchApi, playerApi, seasonApi } from '../api/service';
 import { MatchDTO, PlayerDTO } from '../api/types';
 import { Match, Goal, MatchEvent } from '../types';
 import { generateId } from '../utils';
+import { useAuth } from '../contexts/AuthContext';
 
 const MatchViewEditPage: React.FC = () => {
+  const { user } = useAuth();
+  const canEdit = user?.role === 'super_admin' || user?.role === 'match_scorer';
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -17,9 +20,29 @@ const MatchViewEditPage: React.FC = () => {
   const [homeTeamPlayers, setHomeTeamPlayers] = useState<PlayerDTO[]>([]);
   const [awayTeamPlayers, setAwayTeamPlayers] = useState<PlayerDTO[]>([]);
 
+  const [seasons, setSeasons] = useState<any[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all');
+
+  useEffect(() => {
+    loadSeasons();
+  }, []);
+
   useEffect(() => {
     loadMatches();
-  }, []);
+  }, [selectedSeasonId]);
+
+  const loadSeasons = async () => {
+    try {
+      const data = await seasonApi.getAll();
+      setSeasons(data || []);
+      const active = data.find((s: any) => s.status === 'active');
+      if (active) {
+        setSelectedSeasonId(active.id);
+      }
+    } catch (err) {
+      console.error('加载赛季列表失败:', err);
+    }
+  };
 
   const loadTeamPlayers = async (homeTeamId: string, awayTeamId: string) => {
     try {
@@ -37,7 +60,7 @@ const MatchViewEditPage: React.FC = () => {
   const loadMatches = async () => {
     setIsLoading(true);
     try {
-      const response = await matchApi.getAll();
+      const response = await matchApi.getAll(1, 100, undefined, selectedSeasonId);
       const matchList: Match[] = response.data.map((m: MatchDTO) => {
         const homeGoals = (m.goals || []).filter(g => g.teamType === 'home');
         const awayGoals = (m.goals || []).filter(g => g.teamType === 'away');
@@ -58,9 +81,18 @@ const MatchViewEditPage: React.FC = () => {
           status: m.status || 'finished',
           homeTeamScore: m.homeScore,
           awayTeamScore: m.awayScore,
+          mvpPlayerId: m.mvpPlayerId,
+          mvpPlayerName: m.mvpPlayerName,
         };
       });
       setMatches(matchList);
+      
+      // 自动刷新当前选中的比赛详细数据
+      setSelectedMatch(prev => {
+        if (!prev) return null;
+        const updated = matchList.find(m => m.id === prev.id);
+        return updated || prev;
+      });
     } catch (err) {
       console.error('加载比赛列表失败:', err);
       if (err instanceof Error && err.message === 'Unauthorized') {
@@ -124,10 +156,41 @@ const MatchViewEditPage: React.FC = () => {
     setEditData({ ...editData, events });
   };
 
+  const handleAssistPlayerSelect = (index: number, playerId: string) => {
+    if (!editData) return;
+    const event = editData.events[index];
+    const players = event.teamType === 'home' ? homeTeamPlayers : awayTeamPlayers;
+    const player = players.find(p => p.id === playerId);
+    
+    const events = [...(editData.events || [])];
+    events[index] = {
+      ...events[index],
+      assistPlayerId: player?.id || null,
+      assistPlayerName: player?.name || null,
+      assistJerseyNumber: player?.jerseyNumber || null,
+    };
+    setEditData({ ...editData, events });
+  };
+
   const handleEventChange = (index: number, field: keyof MatchEvent, value: any) => {
     if (editData) {
       const events = [...(editData.events || [])];
-      events[index] = { ...events[index], [field]: value } as MatchEvent;
+      let newEvent = { ...events[index], [field]: value } as MatchEvent;
+      
+      if (field === 'eventType') {
+        if (value !== 'goal') {
+          newEvent.assistPlayerId = null;
+          newEvent.assistPlayerName = null;
+          newEvent.assistJerseyNumber = null;
+        }
+        if (value !== 'substitution') {
+          newEvent.subPlayerId = undefined;
+          newEvent.subPlayerName = undefined;
+          newEvent.subJerseyNumber = undefined;
+        }
+      }
+      
+      events[index] = newEvent;
       setEditData({ ...editData, events });
     }
   };
@@ -260,6 +323,9 @@ const MatchViewEditPage: React.FC = () => {
         subPlayerId: e.subPlayerId || null,
         subPlayerName: e.subPlayerName || null,
         subJerseyNumber: e.subJerseyNumber || null,
+        assistPlayerId: e.assistPlayerId || null,
+        assistPlayerName: e.assistPlayerName || null,
+        assistJerseyNumber: e.assistJerseyNumber || null,
       }));
 
       // 提取所有进球/点球/乌龙球，同步至 Goal 表以向下兼容
@@ -294,6 +360,8 @@ const MatchViewEditPage: React.FC = () => {
         location: editData.location,
         goals: goals,
         events: events,
+        mvpPlayerId: editData.mvpPlayerId || null,
+        mvpPlayerName: editData.mvpPlayerName || null,
       });
 
       setIsSaved(true);
@@ -420,10 +488,28 @@ const MatchViewEditPage: React.FC = () => {
               <span className="icon">⚽</span>
               比赛列表
             </h2>
-            <button onClick={loadMatches} className="add-btn refresh-btn" disabled={isLoading}>
-              <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
-              刷新列表
-            </button>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginLeft: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#666', fontWeight: 500 }}>选择赛季:</span>
+                <select
+                  value={selectedSeasonId}
+                  onChange={(e) => setSelectedSeasonId(e.target.value)}
+                  className="form-select inline"
+                  style={{ width: '180px', padding: '6px 12px', height: 'auto', margin: 0 }}
+                >
+                  <option value="all">显示全部赛季</option>
+                  {seasons.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.status === 'active' ? '(当前赛季)' : '(已归档)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button onClick={loadMatches} className="add-btn refresh-btn" disabled={isLoading} style={{ margin: 0 }}>
+                <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
+                刷新列表
+              </button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -472,20 +558,26 @@ const MatchViewEditPage: React.FC = () => {
                           >
                             <Eye size={14} />
                           </button>
-                          <button
-                            onClick={() => handleEditMatch(match)}
-                            className="action-btn edit-btn"
-                            title="编辑"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMatch(match.id)}
-                            className="delete-btn small"
-                            title="删除"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {canEdit && (
+                            <>
+                              <button
+                                onClick={() => handleEditMatch(match)}
+                                className="action-btn edit-btn"
+                                title="编辑"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              {user?.role === 'super_admin' && (
+                                <button
+                                  onClick={() => handleDeleteMatch(match.id)}
+                                  className="delete-btn small"
+                                  title="删除"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </>
+                          )}
                         </td>
                       </tr>
                     );
@@ -571,6 +663,46 @@ const MatchViewEditPage: React.FC = () => {
                   <div className="form-value">
                     <MapPin size={14} style={{ marginRight: '6px' }} />
                     {selectedMatch.location || '-'}
+                  </div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>全场最佳球员 (MVP)</label>
+                {isEditing ? (
+                  <select
+                    value={editData?.mvpPlayerId || ''}
+                    onChange={(e) => {
+                      const allPlayers = [...homeTeamPlayers, ...awayTeamPlayers];
+                      const selected = allPlayers.find(p => p.id === e.target.value);
+                      if (editData) {
+                        setEditData({
+                          ...editData,
+                          mvpPlayerId: selected?.id || '',
+                          mvpPlayerName: selected?.name || '',
+                        });
+                      }
+                    }}
+                    className="form-select"
+                  >
+                    <option value="">请选择本场 MVP (选填)</option>
+                    <optgroup label={editData?.homeTeamName || '主队'}>
+                      {homeTeamPlayers.map(player => (
+                        <option key={player.id} value={player.id}>
+                          {player.name} ({player.jerseyNumber}号)
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={editData?.awayTeamName || '客队'}>
+                      {awayTeamPlayers.map(player => (
+                        <option key={player.id} value={player.id}>
+                          {player.name} ({player.jerseyNumber}号)
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                ) : (
+                  <div className="form-value" style={{ fontWeight: 'bold', color: '#f57c00' }}>
+                    🏆 {selectedMatch.mvpPlayerName || '未评选'}
                   </div>
                 )}
               </div>
@@ -765,8 +897,8 @@ const MatchViewEditPage: React.FC = () => {
                                 >
                                   <option value="">请选择换上球员</option>
                                   {homeTeamPlayers.map((player) => (
-                                    <option key={player.id} value={player.id}>
-                                      换上: {player.name}
+                                    <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                      换上: {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛 - 🟨${player.yellowCards} 🟥${player.redCards})` : ''}
                                     </option>
                                   ))}
                                 </select>
@@ -778,26 +910,45 @@ const MatchViewEditPage: React.FC = () => {
                                 >
                                   <option value="">请选择换下球员</option>
                                   {homeTeamPlayers.map((player) => (
-                                    <option key={player.id} value={player.id}>
-                                      换下: {player.name}
+                                    <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                      换下: {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛 - 🟨${player.yellowCards} 🟥${player.redCards})` : ''}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                             ) : (
-                              <select
-                                value={event.playerId || ''}
-                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
-                                className="form-select inline"
-                                required
-                              >
-                                <option value="">请选择球员</option>
-                                {homeTeamPlayers.map((player) => (
-                                  <option key={player.id} value={player.id}>
-                                    {player.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择球员</option>
+                                  {homeTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                      {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛 - 🟨${player.yellowCards} 🟥${player.redCards})` : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                {event.eventType === 'goal' && (
+                                  <select
+                                    value={event.assistPlayerId || ''}
+                                    onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
+                                    className="form-select inline"
+                                    style={{ marginTop: '4px', borderColor: '#b3e5fc', background: '#e1f5fe' }}
+                                  >
+                                    <option value="">请选择助攻球员 (选填)</option>
+                                    {homeTeamPlayers
+                                      .filter(p => p.id !== event.playerId)
+                                      .map((player) => (
+                                        <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                          助攻: {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛)` : ''}
+                                        </option>
+                                      ))}
+                                  </select>
+                                )}
+                              </div>
                             )
                           ) : (
                             event.eventType === 'substitution' ? (
@@ -806,7 +957,14 @@ const MatchViewEditPage: React.FC = () => {
                                 <span>换下: {event.subPlayerName}</span>
                               </div>
                             ) : (
-                              <span>{event.playerName}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span>{event.playerName}</span>
+                                {event.assistPlayerName && (
+                                  <span style={{ fontSize: '0.8rem', color: '#0288d1', fontStyle: 'italic' }}>
+                                    助攻: {event.assistPlayerName}
+                                  </span>
+                                )}
+                              </div>
                             )
                           )}
                         </td>
@@ -954,8 +1112,8 @@ const MatchViewEditPage: React.FC = () => {
                                 >
                                   <option value="">请选择换上球员</option>
                                   {awayTeamPlayers.map((player) => (
-                                    <option key={player.id} value={player.id}>
-                                      换上: {player.name}
+                                    <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                      换上: {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛 - 🟨${player.yellowCards} 🟥${player.redCards})` : ''}
                                     </option>
                                   ))}
                                 </select>
@@ -967,26 +1125,45 @@ const MatchViewEditPage: React.FC = () => {
                                 >
                                   <option value="">请选择换下球员</option>
                                   {awayTeamPlayers.map((player) => (
-                                    <option key={player.id} value={player.id}>
-                                      换下: {player.name}
+                                    <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                      换下: {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛 - 🟨${player.yellowCards} 🟥${player.redCards})` : ''}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                             ) : (
-                              <select
-                                value={event.playerId || ''}
-                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
-                                className="form-select inline"
-                                required
-                              >
-                                <option value="">请选择球员</option>
-                                {awayTeamPlayers.map((player) => (
-                                  <option key={player.id} value={player.id}>
-                                    {player.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择球员</option>
+                                  {awayTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                      {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛 - 🟨${player.yellowCards} 🟥${player.redCards})` : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                {event.eventType === 'goal' && (
+                                  <select
+                                    value={event.assistPlayerId || ''}
+                                    onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
+                                    className="form-select inline"
+                                    style={{ marginTop: '4px', borderColor: '#b3e5fc', background: '#e1f5fe' }}
+                                  >
+                                    <option value="">请选择助攻球员 (选填)</option>
+                                    {awayTeamPlayers
+                                      .filter(p => p.id !== event.playerId)
+                                      .map((player) => (
+                                        <option key={player.id} value={player.id} style={player.status === 'suspended' ? { color: '#fa5252', fontWeight: 'bold' } : undefined}>
+                                          助攻: {player.name} ({player.jerseyNumber}号) {player.status === 'suspended' ? `(🛑 停赛)` : ''}
+                                        </option>
+                                      ))}
+                                  </select>
+                                )}
+                              </div>
                             )
                           ) : (
                             event.eventType === 'substitution' ? (
@@ -995,7 +1172,14 @@ const MatchViewEditPage: React.FC = () => {
                                 <span>换下: {event.subPlayerName}</span>
                               </div>
                             ) : (
-                              <span>{event.playerName}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span>{event.playerName}</span>
+                                {event.assistPlayerName && (
+                                  <span style={{ fontSize: '0.8rem', color: '#0288d1', fontStyle: 'italic' }}>
+                                    助攻: {event.assistPlayerName}
+                                  </span>
+                                )}
+                              </div>
                             )
                           )}
                         </td>

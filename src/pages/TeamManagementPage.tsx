@@ -85,7 +85,22 @@ const TeamManagementPage: React.FC = () => {
 
   const updateEvent = (index: number, field: keyof MatchEvent, value: any) => {
     const updatedEvents = [...formData.events];
-    updatedEvents[index] = { ...updatedEvents[index], [field]: value } as MatchEvent;
+    let newEvent = { ...updatedEvents[index], [field]: value } as MatchEvent;
+    
+    if (field === 'eventType') {
+      if (value !== 'goal') {
+        newEvent.assistPlayerId = null;
+        newEvent.assistPlayerName = null;
+        newEvent.assistJerseyNumber = null;
+      }
+      if (value !== 'substitution') {
+        newEvent.subPlayerId = undefined;
+        newEvent.subPlayerName = undefined;
+        newEvent.subJerseyNumber = undefined;
+      }
+    }
+    
+    updatedEvents[index] = newEvent;
     setFormData({ ...formData, events: updatedEvents });
     setError(null);
   };
@@ -117,6 +132,20 @@ const TeamManagementPage: React.FC = () => {
       subPlayerId: player?.id || '',
       subPlayerName: player?.name || '',
       subJerseyNumber: player?.jerseyNumber || '',
+    };
+  };
+
+  const handleAssistPlayerSelect = (index: number, playerId: string) => {
+    const event = formData.events[index];
+    const players = event.teamType === 'home' ? homeTeamPlayers : awayTeamPlayers;
+    const player = players.find(p => p.id === playerId);
+    
+    const updatedEvents = [...formData.events];
+    updatedEvents[index] = {
+      ...updatedEvents[index],
+      assistPlayerId: player?.id || null,
+      assistPlayerName: player?.name || null,
+      assistJerseyNumber: player?.jerseyNumber || null,
     };
     setFormData({ ...formData, events: updatedEvents });
     setError(null);
@@ -697,7 +726,7 @@ const TeamManagementPage: React.FC = () => {
                                   <option value="">请选择换上球员</option>
                                   {homeTeamPlayers.map((player) => (
                                     <option key={player.id} value={player.id}>
-                                      换上: {player.name}
+                                      换上: {player.name} ({player.jerseyNumber}号)
                                     </option>
                                   ))}
                                 </select>
@@ -710,25 +739,44 @@ const TeamManagementPage: React.FC = () => {
                                   <option value="">请选择换下球员</option>
                                   {homeTeamPlayers.map((player) => (
                                     <option key={player.id} value={player.id}>
-                                      换下: {player.name}
+                                      换下: {player.name} ({player.jerseyNumber}号)
                                     </option>
                                   ))}
                                 </select>
                               </div>
                             ) : (
-                              <select
-                                value={event.playerId || ''}
-                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
-                                className="form-select inline"
-                                required
-                              >
-                                <option value="">请选择球员</option>
-                                {homeTeamPlayers.map((player) => (
-                                  <option key={player.id} value={player.id}>
-                                    {player.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择进球/得牌球员</option>
+                                  {homeTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      {player.name} ({player.jerseyNumber}号)
+                                    </option>
+                                  ))}
+                                </select>
+                                {event.eventType === 'goal' && (
+                                  <select
+                                    value={event.assistPlayerId || ''}
+                                    onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
+                                    className="form-select inline"
+                                    style={{ borderColor: '#adb5bd' }}
+                                  >
+                                    <option value="">（可选）请选择助攻球员</option>
+                                    {homeTeamPlayers
+                                      .filter(p => p.id !== event.playerId)
+                                      .map((player) => (
+                                        <option key={player.id} value={player.id}>
+                                          助攻: {player.name} ({player.jerseyNumber}号)
+                                        </option>
+                                      ))}
+                                  </select>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td>
@@ -846,7 +894,7 @@ const TeamManagementPage: React.FC = () => {
                                   <option value="">请选择换上球员</option>
                                   {awayTeamPlayers.map((player) => (
                                     <option key={player.id} value={player.id}>
-                                      换上: {player.name}
+                                      换上: {player.name} ({player.jerseyNumber}号)
                                     </option>
                                   ))}
                                 </select>
@@ -859,25 +907,44 @@ const TeamManagementPage: React.FC = () => {
                                   <option value="">请选择换下球员</option>
                                   {awayTeamPlayers.map((player) => (
                                     <option key={player.id} value={player.id}>
-                                      换下: {player.name}
+                                      换下: {player.name} ({player.jerseyNumber}号)
                                     </option>
                                   ))}
                                 </select>
                               </div>
                             ) : (
-                              <select
-                                value={event.playerId || ''}
-                                onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
-                                className="form-select inline"
-                                required
-                              >
-                                <option value="">请选择球员</option>
-                                {awayTeamPlayers.map((player) => (
-                                  <option key={player.id} value={player.id}>
-                                    {player.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <select
+                                  value={event.playerId || ''}
+                                  onChange={(e) => handleEventPlayerSelect(index, e.target.value)}
+                                  className="form-select inline"
+                                  required
+                                >
+                                  <option value="">请选择进球/得牌球员</option>
+                                  {awayTeamPlayers.map((player) => (
+                                    <option key={player.id} value={player.id}>
+                                      {player.name} ({player.jerseyNumber}号)
+                                    </option>
+                                  ))}
+                                </select>
+                                {event.eventType === 'goal' && (
+                                  <select
+                                    value={event.assistPlayerId || ''}
+                                    onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
+                                    className="form-select inline"
+                                    style={{ borderColor: '#adb5bd' }}
+                                  >
+                                    <option value="">（可选）请选择助攻球员</option>
+                                    {awayTeamPlayers
+                                      .filter(p => p.id !== event.playerId)
+                                      .map((player) => (
+                                        <option key={player.id} value={player.id}>
+                                          助攻: {player.name} ({player.jerseyNumber}号)
+                                        </option>
+                                      ))}
+                                  </select>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td>

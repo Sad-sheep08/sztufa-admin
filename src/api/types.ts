@@ -22,6 +22,9 @@ export interface PlayerDTO {
   studentId: string;
   jerseyNumber: string;
   photo?: string | null;
+  status?: string;
+  yellowCards?: number;
+  redCards?: number;
   teamId: string;
   team?: TeamDTO;
   createdAt?: string;
@@ -65,6 +68,9 @@ export interface MatchDTO {
   awayTeam?: TeamDTO;
   goals?: any[];
   events?: any[];
+  mvpPlayerId?: string | null;
+  mvpPlayerName?: string | null;
+  seasonId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -99,10 +105,27 @@ export interface AuthUser {
   id: string;
   username: string;
   role: string;
+  teamId?: string;
   createdAt?: string;
 }
 
 export interface AuthResponse {
   user: AuthUser;
   token: string;
+}
+
+export interface AuditLogDTO {
+  id: string;
+  username: string;
+  action: string;
+  details: string;
+  createdAt: string;
+}
+
+export interface BackupDTO {
+  key: string;
+  filename: string;
+  size: number;
+  lastModified: string;
+  downloadUrl: string;
 }

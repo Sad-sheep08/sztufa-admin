@@ -4,6 +4,9 @@ export interface Player {
   studentId: string;
   jerseyNumber: string;
   photo: string | null;
+  status?: string;
+  yellowCards?: number;
+  redCards?: number;
   teamId: string;
   team?: Team;
   createdAt?: string;
@@ -66,6 +69,9 @@ export interface MatchEvent {
   subPlayerId?: string | null;
   subPlayerName?: string | null;
   subJerseyNumber?: string | null;
+  assistPlayerId?: string | null;
+  assistPlayerName?: string | null;
+  assistJerseyNumber?: string | null;
   description: string;
   teamType: 'home' | 'away';
 }
@@ -90,6 +96,8 @@ export interface Match {
   matchDate?: string;
   location: string;
   status: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';
+  mvpPlayerId?: string | null;
+  mvpPlayerName?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -109,4 +117,6 @@ export interface MatchFormData {
   matchDate: string;
   location: string;
   status?: string;
+  mvpPlayerId?: string | null;
+  mvpPlayerName?: string | null;
 }

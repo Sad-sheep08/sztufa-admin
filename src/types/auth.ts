@@ -18,6 +18,7 @@ export interface User {
   id: string;
   username: string;
   role: string;
+  teamId?: string;
   createdAt?: string;
   updatedAt?: string;
 }

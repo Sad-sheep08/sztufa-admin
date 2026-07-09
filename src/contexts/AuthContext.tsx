@@ -89,6 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: (userData as { id: string })?.id || '',
           username: (userData as { username: string })?.username || username,
           role: (userData as { role: string })?.role || 'user',
+          teamId: (userData as { teamId?: string })?.teamId,
         };
         
         localStorage.setItem('user', JSON.stringify(userInfo));

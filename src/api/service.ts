@@ -1,4 +1,4 @@
-import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, PlayerDTO, TeamListResponse, MatchListResponse, PlayerListResponse, ImportResult, AuthResponse } from './types';
+import { ApiResponse, ErrorResponse, TeamDTO, MatchDTO, PlayerDTO, TeamListResponse, MatchListResponse, PlayerListResponse, ImportResult, AuthResponse, AuditLogDTO, BackupDTO } from './types';
 
 const BASE_URL = !window.location.hostname.endsWith('sztufa.xyz') ? 'http://localhost:3001/api/v1' : 'https://api.sztufa.xyz/api/v1';
 
@@ -183,10 +183,13 @@ export const matchApi = {
     return handleResponse<MatchDTO>(response);
   },
 
-  getAll: async (page = 1, limit = 10, teamId?: string): Promise<MatchListResponse> => {
+  getAll: async (page = 1, limit = 100, teamId?: string, seasonId?: string): Promise<MatchListResponse> => {
     let url = `${BASE_URL}/matches?page=${page}&limit=${limit}`;
     if (teamId) {
       url += `&teamId=${teamId}`;
+    }
+    if (seasonId) {
+      url += `&seasonId=${seasonId}`;
     }
     const response = await fetch(url, {
       method: 'GET',
@@ -222,28 +225,64 @@ export const matchApi = {
 };
 
 export const authApi = {
-  login: async (username: string, password: string): Promise<AuthResponse> => {
+  login: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     
     const response = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify(credentials),
     });
     return handleResponse<AuthResponse>(response);
   },
 
-  register: async (username: string, password: string, role?: string): Promise<AuthResponse> => {
+  register: async (credentials: { username: string; password: string; role?: string; teamId?: string }): Promise<AuthResponse> => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ username, password, role }),
+      body: JSON.stringify(credentials),
     });
     return handleResponse<AuthResponse>(response);
+  },
+};
+
+export const userApi = {
+  getAll: async (): Promise<any[]> => {
+    const response = await fetch(`${BASE_URL}/auth/users`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<any[]>(response);
+  },
+
+  updateRole: async (id: string, role: string, teamId: string | null): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/auth/users/${id}/role`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify({ role, teamId }),
+    });
+    return handleResponse<any>(response);
+  },
+
+  delete: async (id: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/auth/users/${id}`, {
+      method: 'DELETE',
+      headers: createHeaders(),
+    });
+    return handleResponse<any>(response);
+  },
+
+  resetPassword: async (id: string, password: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/auth/users/${id}/reset-password`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify({ password }),
+    });
+    return handleResponse<any>(response);
   },
 };
 
@@ -275,6 +314,66 @@ export const uploadApi = {
       body: formData,
     });
     return handleResponse<ApiResponse<{ url: string }>>(response);
+  },
+};
+
+export const auditLogApi = {
+  getAll: async (page = 1, limit = 20): Promise<{ data: AuditLogDTO[]; total: number; page: number; limit: number }> => {
+    const response = await fetch(`${BASE_URL}/audit-logs?page=${page}&limit=${limit}`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<{ data: AuditLogDTO[]; total: number; page: number; limit: number }>(response);
+  },
+};
+
+export const backupApi = {
+  create: async (): Promise<{ success: boolean; downloadUrl: string }> => {
+    const response = await fetch(`${BASE_URL}/backups/create`, {
+      method: 'POST',
+      headers: createHeaders(),
+    });
+    return handleResponse<{ success: boolean; downloadUrl: string }>(response);
+  },
+  list: async (): Promise<{ success: boolean; data: BackupDTO[] }> => {
+    const response = await fetch(`${BASE_URL}/backups/list`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<{ success: boolean; data: BackupDTO[] }>(response);
+  },
+  restore: async (key: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${BASE_URL}/backups/restore`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ key }),
+    });
+    return handleResponse<{ success: boolean; message: string }>(response);
+  },
+};
+
+export const seasonApi = {
+  getAll: async (): Promise<any[]> => {
+    const response = await fetch(`${BASE_URL}/seasons`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<any[]>(response);
+  },
+  getActive: async (): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/active`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<any>(response);
+  },
+  archive: async (name: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/archive`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ name }),
+    });
+    return handleResponse<any>(response);
   },
 };
 
