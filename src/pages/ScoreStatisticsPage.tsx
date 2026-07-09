@@ -58,9 +58,18 @@ const MatchViewEditPage: React.FC = () => {
           status: m.status || 'finished',
           homeTeamScore: m.homeScore,
           awayTeamScore: m.awayScore,
+          mvpPlayerId: m.mvpPlayerId,
+          mvpPlayerName: m.mvpPlayerName,
         };
       });
       setMatches(matchList);
+      
+      // 自动刷新当前选中的比赛详细数据
+      setSelectedMatch(prev => {
+        if (!prev) return null;
+        const updated = matchList.find(m => m.id === prev.id);
+        return updated || prev;
+      });
     } catch (err) {
       console.error('加载比赛列表失败:', err);
       if (err instanceof Error && err.message === 'Unauthorized') {
