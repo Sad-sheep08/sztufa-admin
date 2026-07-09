@@ -222,26 +222,26 @@ export const matchApi = {
 };
 
 export const authApi = {
-  login: async (username: string, password: string): Promise<AuthResponse> => {
+  login: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     
     const response = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify(credentials),
     });
     return handleResponse<AuthResponse>(response);
   },
 
-  register: async (username: string, password: string, role?: string): Promise<AuthResponse> => {
+  register: async (credentials: { username: string; password: string; role?: string }): Promise<AuthResponse> => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ username, password, role }),
+      body: JSON.stringify(credentials),
     });
     return handleResponse<AuthResponse>(response);
   },

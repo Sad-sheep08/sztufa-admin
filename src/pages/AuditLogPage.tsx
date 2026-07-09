@@ -24,7 +24,7 @@ const AuditLogPage: React.FC = () => {
       setTotal(response.total || 0);
     } catch (err) {
       console.error('加载审计日志失败:', err);
-      setError('无法连接服务器，请稍后重试');
+      setError(err instanceof Error ? err.message : '无法连接服务器，请稍后重试');
     } finally {
       setIsLoading(false);
     }
@@ -33,8 +33,14 @@ const AuditLogPage: React.FC = () => {
   const totalPages = Math.ceil(total / limit) || 1;
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    if (!dateStr) return '暂无时间';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '无效时间';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    } catch {
+      return '时间格式错误';
+    }
   };
 
   const getActionTagClass = (action: string) => {
