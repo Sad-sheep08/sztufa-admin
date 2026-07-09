@@ -85,7 +85,22 @@ const TeamManagementPage: React.FC = () => {
 
   const updateEvent = (index: number, field: keyof MatchEvent, value: any) => {
     const updatedEvents = [...formData.events];
-    updatedEvents[index] = { ...updatedEvents[index], [field]: value } as MatchEvent;
+    let newEvent = { ...updatedEvents[index], [field]: value } as MatchEvent;
+    
+    if (field === 'eventType') {
+      if (value !== 'goal') {
+        newEvent.assistPlayerId = null;
+        newEvent.assistPlayerName = null;
+        newEvent.assistJerseyNumber = null;
+      }
+      if (value !== 'substitution') {
+        newEvent.subPlayerId = undefined;
+        newEvent.subPlayerName = undefined;
+        newEvent.subJerseyNumber = undefined;
+      }
+    }
+    
+    updatedEvents[index] = newEvent;
     setFormData({ ...formData, events: updatedEvents });
     setError(null);
   };
@@ -744,7 +759,7 @@ const TeamManagementPage: React.FC = () => {
                                     </option>
                                   ))}
                                 </select>
-                                {(event.eventType === 'goal' || event.eventType === 'penalty') && (
+                                {event.eventType === 'goal' && (
                                   <select
                                     value={event.assistPlayerId || ''}
                                     onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
@@ -912,7 +927,7 @@ const TeamManagementPage: React.FC = () => {
                                     </option>
                                   ))}
                                 </select>
-                                {(event.eventType === 'goal' || event.eventType === 'penalty') && (
+                                {event.eventType === 'goal' && (
                                   <select
                                     value={event.assistPlayerId || ''}
                                     onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}

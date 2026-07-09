@@ -175,7 +175,22 @@ const MatchViewEditPage: React.FC = () => {
   const handleEventChange = (index: number, field: keyof MatchEvent, value: any) => {
     if (editData) {
       const events = [...(editData.events || [])];
-      events[index] = { ...events[index], [field]: value } as MatchEvent;
+      let newEvent = { ...events[index], [field]: value } as MatchEvent;
+      
+      if (field === 'eventType') {
+        if (value !== 'goal') {
+          newEvent.assistPlayerId = null;
+          newEvent.assistPlayerName = null;
+          newEvent.assistJerseyNumber = null;
+        }
+        if (value !== 'substitution') {
+          newEvent.subPlayerId = undefined;
+          newEvent.subPlayerName = undefined;
+          newEvent.subJerseyNumber = undefined;
+        }
+      }
+      
+      events[index] = newEvent;
       setEditData({ ...editData, events });
     }
   };
@@ -916,7 +931,7 @@ const MatchViewEditPage: React.FC = () => {
                                     </option>
                                   ))}
                                 </select>
-                                {(event.eventType === 'goal' || event.eventType === 'penalty') && (
+                                {event.eventType === 'goal' && (
                                   <select
                                     value={event.assistPlayerId || ''}
                                     onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
@@ -1131,7 +1146,7 @@ const MatchViewEditPage: React.FC = () => {
                                     </option>
                                   ))}
                                 </select>
-                                {(event.eventType === 'goal' || event.eventType === 'penalty') && (
+                                {event.eventType === 'goal' && (
                                   <select
                                     value={event.assistPlayerId || ''}
                                     onChange={(e) => handleAssistPlayerSelect(index, e.target.value)}
