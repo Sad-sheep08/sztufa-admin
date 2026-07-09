@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Download, RotateCcw, AlertTriangle, FileCheck, RefreshCw } from 'lucide-react';
-import { backupApi } from '../api/service';
+import { Database, Download, RotateCcw, AlertTriangle, FileCheck, RefreshCw, Calendar } from 'lucide-react';
+import { backupApi, seasonApi } from '../api/service';
 import { BackupDTO } from '../api/types';
 
 const SystemSettingsPage: React.FC = () => {
   const [backups, setBackups] = useState<BackupDTO[]>([]);
+  const [activeSeason, setActiveSeason] = useState<any>(null);
+  const [newSeasonName, setNewSeasonName] = useState('');
+  const [isArchivingSeason, setIsArchivingSeason] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
@@ -13,6 +16,7 @@ const SystemSettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadBackups();
+    loadActiveSeason();
   }, []);
 
   const loadBackups = async () => {
@@ -28,6 +32,40 @@ const SystemSettingsPage: React.FC = () => {
       setError('无法获取云端备份列表，请检查网络或 R2 连接');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadActiveSeason = async () => {
+    try {
+      const data = await seasonApi.getActive();
+      setActiveSeason(data);
+    } catch (err) {
+      console.error('加载活跃赛季失败:', err);
+    }
+  };
+
+  const handleArchiveSeason = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSeasonName.trim()) return;
+
+    if (!confirm(`【警告】确定要结束并归档当前赛季“${activeSeason?.name || '未命名'}”，并开启新赛季“${newSeasonName}”吗？\n\n此操作将会：\n1. 将往期赛季的数据进行锁定和归档\n2. 清空所有球员本赛季的黄红牌数并全部恢复为可用状态（状态重设为active）\n\n确定执行吗？`)) {
+      return;
+    }
+
+    setIsArchivingSeason(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const res = await seasonApi.archive(newSeasonName);
+      setSuccessMessage(`已成功归档老赛季，并开启新活跃赛季：${res.name}`);
+      setNewSeasonName('');
+      loadActiveSeason();
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('归档新赛季失败:', err);
+      setError(err instanceof Error ? err.message : '归档新赛季失败');
+    } finally {
+      setIsArchivingSeason(false);
     }
   };
 
@@ -110,6 +148,64 @@ const SystemSettingsPage: React.FC = () => {
             <span>{successMessage}</span>
           </div>
         )}
+
+        {/* 赛季重置与归档管理 */}
+        <div className="form-section" style={{ marginBottom: '30px' }}>
+          <div className="section-header" style={{ marginBottom: '20px' }}>
+            <h2 className="form-title" style={{ margin: 0 }}>
+              <span className="icon">🏆</span>
+              赛季管理与归档重置
+            </h2>
+          </div>
+          <div style={{ background: '#fcfcfc', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px dashed #eee', paddingBottom: '15px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#333' }}>当前活跃赛季</h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+                  目前所有新赛程录入、数据统计与球员卡片累计均关联在此活跃赛季：
+                </p>
+              </div>
+              <span style={{ background: '#e1f5fe', color: '#0288d1', padding: '6px 16px', borderRadius: '20px', fontSize: '15px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <Calendar size={16} />
+                {activeSeason ? activeSeason.name : '加载中...'}
+              </span>
+            </div>
+
+            <form onSubmit={handleArchiveSeason} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#555', marginBottom: '8px' }}>
+                  开启并切换到新赛季（一键归档当前赛季）：
+                </label>
+                <input
+                  type="text"
+                  placeholder="例如：2026秋季赛季"
+                  value={newSeasonName}
+                  onChange={(e) => setNewSeasonName(e.target.value)}
+                  disabled={isArchivingSeason}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isArchivingSeason || !newSeasonName.trim()}
+                className="save-btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', height: '40px', margin: 0 }}
+              >
+                {isArchivingSeason ? (
+                  <>
+                    <RefreshCw size={18} className="spinning" />
+                    正在归档重置中...
+                  </>
+                ) : (
+                  <>
+                    <FileCheck size={18} />
+                    确认归档并开启新赛季
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
 
         <div className="form-section">
           <div className="section-header" style={{ marginBottom: '20px' }}>

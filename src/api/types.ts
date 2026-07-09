@@ -68,6 +68,9 @@ export interface MatchDTO {
   awayTeam?: TeamDTO;
   goals?: any[];
   events?: any[];
+  mvpPlayerId?: string | null;
+  mvpPlayerName?: string | null;
+  seasonId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

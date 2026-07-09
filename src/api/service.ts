@@ -313,6 +313,31 @@ export const backupApi = {
   },
 };
 
+export const seasonApi = {
+  getAll: async (): Promise<any[]> => {
+    const response = await fetch(`${BASE_URL}/seasons`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<any[]>(response);
+  },
+  getActive: async (): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/active`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<any>(response);
+  },
+  archive: async (name: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/archive`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ name }),
+    });
+    return handleResponse<any>(response);
+  },
+};
+
 export const validateResponse = (response: ApiResponse | ErrorResponse): response is ApiResponse => {
   return 'data' in response && 'message' in response;
 };
