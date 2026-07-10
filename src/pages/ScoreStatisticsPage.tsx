@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, MapPin, Plus, X } from 'lucide-react';
-import { matchApi, playerApi, seasonApi } from '../api/service';
+import { matchApi, playerApi, seasonApi, teamApi } from '../api/service';
 import { MatchDTO, PlayerDTO } from '../api/types';
 import { Match, Goal, MatchEvent } from '../types';
 import { generateId } from '../utils';
@@ -44,14 +44,14 @@ const MatchViewEditPage: React.FC = () => {
     }
   };
 
-  const loadTeamPlayers = async (homeTeamId: string, awayTeamId: string) => {
+  const loadTeamPlayers = async (homeTeamId: string, awayTeamId: string, seasonId?: string) => {
     try {
-      const [homeResponse, awayResponse] = await Promise.all([
-        playerApi.getAll(1, 100, homeTeamId),
-        playerApi.getAll(1, 100, awayTeamId),
+      const [homePlayers, awayPlayers] = await Promise.all([
+        teamApi.getPlayers(homeTeamId, seasonId),
+        teamApi.getPlayers(awayTeamId, seasonId),
       ]);
-      setHomeTeamPlayers(homeResponse.data);
-      setAwayTeamPlayers(awayResponse.data);
+      setHomeTeamPlayers(homePlayers);
+      setAwayTeamPlayers(awayPlayers);
     } catch (err) {
       console.error('加载球队球员失败:', err);
     }
@@ -83,6 +83,8 @@ const MatchViewEditPage: React.FC = () => {
           awayTeamScore: m.awayScore,
           mvpPlayerId: m.mvpPlayerId,
           mvpPlayerName: m.mvpPlayerName,
+          seasonId: m.seasonId || '',
+          lineups: m.lineups || [],
         };
       });
       setMatches(matchList);
@@ -120,8 +122,22 @@ const MatchViewEditPage: React.FC = () => {
     setIsSaved(false);
     
     if (match.homeTeamId && match.awayTeamId) {
-      await loadTeamPlayers(match.homeTeamId, match.awayTeamId);
+      await loadTeamPlayers(match.homeTeamId, match.awayTeamId, match.seasonId);
     }
+  };
+
+  const handleLineupChange = (playerId: string, teamType: 'home' | 'away', type: 'starting' | 'substitute' | 'none') => {
+    if (!editData) return;
+    let lineups = [...(editData.lineups || [])];
+    lineups = lineups.filter(l => l.playerId !== playerId);
+    if (type !== 'none') {
+      lineups.push({
+        playerId,
+        teamType,
+        lineupType: type
+      });
+    }
+    setEditData({ ...editData, lineups });
   };
 
   const handleEventPlayerSelect = (index: number, playerId: string) => {
@@ -362,6 +378,11 @@ const MatchViewEditPage: React.FC = () => {
         events: events,
         mvpPlayerId: editData.mvpPlayerId || null,
         mvpPlayerName: editData.mvpPlayerName || null,
+        lineups: (editData.lineups || []).map(l => ({
+          playerId: l.playerId,
+          teamType: l.teamType,
+          lineupType: l.lineupType
+        }))
       });
 
       setIsSaved(true);
@@ -807,8 +828,240 @@ const MatchViewEditPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+            </div>
+          )}
+
+          {/* 阵容配置面板 */}
+          {selectedMatch && (
+            <div className="form-section">
+              <div className="section-header">
+                <h2 className="form-title">
+                  <span className="icon">🏃‍♂️</span>
+                  首发与替补名单配置
+                </h2>
+              </div>
+              
+              <div className="lineups-admin-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                {/* 主队名单 */}
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', borderBottom: '2px solid #ddd', paddingBottom: '6px' }}>
+                    {isEditing ? editData?.homeTeamName : selectedMatch.homeTeamName} (主队)
+                  </h3>
+                  
+                  {isEditing ? (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '12px' }}>
+                      {homeTeamPlayers.length === 0 ? (
+                        <p style={{ color: '#999', textAlign: 'center', padding: '20px 0' }}>暂无球员数据，请先录入名册</p>
+                      ) : (
+                        homeTeamPlayers.map(player => {
+                          const lineup = (editData?.lineups || []).find(l => l.playerId === player.id);
+                          const status = lineup ? lineup.lineupType : 'none';
+                          
+                          return (
+                            <div key={player.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f9f9f9' }}>
+                              <div>
+                                <span style={{ display: 'inline-block', width: '30px', fontWeight: 'bold', color: '#666' }}>
+                                  #{player.jerseyNumber}
+                                </span>
+                                <span>{player.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLineupChange(player.id || '', 'home', 'starting')}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: status === 'starting' ? '#4caf50' : '#fff',
+                                    color: status === 'starting' ? '#fff' : '#333',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  首发
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLineupChange(player.id || '', 'home', 'substitute')}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: status === 'substitute' ? '#2196f3' : '#fff',
+                                    color: status === 'substitute' ? '#fff' : '#333',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  替补
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLineupChange(player.id || '', 'home', 'none')}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: status === 'none' ? '#e0e0e0' : '#fff',
+                                    color: '#333',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  未上场
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <h4 style={{ fontWeight: 'bold', color: '#4caf50', marginTop: '10px' }}>首发球员</h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '8px 0' }}>
+                        {(selectedMatch.lineups || []).filter(l => l.teamType === 'home' && l.lineupType === 'starting').length === 0 ? (
+                          <span style={{ color: '#999' }}>未设置</span>
+                        ) : (
+                          (selectedMatch.lineups || [])
+                            .filter(l => l.teamType === 'home' && l.lineupType === 'starting')
+                            .map(l => (
+                              <span key={l.id} style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#2e7d32', borderRadius: '4px', fontSize: '13px' }}>
+                                #{l.player?.jerseyNumber} {l.player?.name}
+                              </span>
+                            ))
+                        )}
+                      </div>
+                      <h4 style={{ fontWeight: 'bold', color: '#2196f3', marginTop: '10px' }}>替补球员</h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '8px 0' }}>
+                        {(selectedMatch.lineups || []).filter(l => l.teamType === 'home' && l.lineupType === 'substitute').length === 0 ? (
+                          <span style={{ color: '#999' }}>未设置</span>
+                        ) : (
+                          (selectedMatch.lineups || [])
+                            .filter(l => l.teamType === 'home' && l.lineupType === 'substitute')
+                            .map(l => (
+                              <span key={l.id} style={{ padding: '4px 8px', backgroundColor: '#e3f2fd', color: '#1565c0', borderRadius: '4px', fontSize: '13px' }}>
+                                #{l.player?.jerseyNumber} {l.player?.name}
+                              </span>
+                            ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 客队名单 */}
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', borderBottom: '2px solid #ddd', paddingBottom: '6px' }}>
+                    {isEditing ? editData?.awayTeamName : selectedMatch.awayTeamName} (客队)
+                  </h3>
+                  
+                  {isEditing ? (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '12px' }}>
+                      {awayTeamPlayers.length === 0 ? (
+                        <p style={{ color: '#999', textAlign: 'center', padding: '20px 0' }}>暂无球员数据，请先录入名册</p>
+                      ) : (
+                        awayTeamPlayers.map(player => {
+                          const lineup = (editData?.lineups || []).find(l => l.playerId === player.id);
+                          const status = lineup ? lineup.lineupType : 'none';
+                          
+                          return (
+                            <div key={player.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f9f9f9' }}>
+                              <div>
+                                <span style={{ display: 'inline-block', width: '30px', fontWeight: 'bold', color: '#666' }}>
+                                  #{player.jerseyNumber}
+                                </span>
+                                <span>{player.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLineupChange(player.id || '', 'away', 'starting')}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: status === 'starting' ? '#4caf50' : '#fff',
+                                    color: status === 'starting' ? '#fff' : '#333',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  首发
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLineupChange(player.id || '', 'away', 'substitute')}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: status === 'substitute' ? '#2196f3' : '#fff',
+                                    color: status === 'substitute' ? '#fff' : '#333',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  替补
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLineupChange(player.id || '', 'away', 'none')}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: status === 'none' ? '#e0e0e0' : '#fff',
+                                    color: '#333',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  未上场
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <h4 style={{ fontWeight: 'bold', color: '#4caf50', marginTop: '10px' }}>首发球员</h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '8px 0' }}>
+                        {(selectedMatch.lineups || []).filter(l => l.teamType === 'away' && l.lineupType === 'starting').length === 0 ? (
+                          <span style={{ color: '#999' }}>未设置</span>
+                        ) : (
+                          (selectedMatch.lineups || [])
+                            .filter(l => l.teamType === 'away' && l.lineupType === 'starting')
+                            .map(l => (
+                              <span key={l.id} style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#2e7d32', borderRadius: '4px', fontSize: '13px' }}>
+                                #{l.player?.jerseyNumber} {l.player?.name}
+                              </span>
+                            ))
+                        )}
+                      </div>
+                      <h4 style={{ fontWeight: 'bold', color: '#2196f3', marginTop: '10px' }}>替补球员</h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '8px 0' }}>
+                        {(selectedMatch.lineups || []).filter(l => l.teamType === 'away' && l.lineupType === 'substitute').length === 0 ? (
+                          <span style={{ color: '#999' }}>未设置</span>
+                        ) : (
+                          (selectedMatch.lineups || [])
+                            .filter(l => l.teamType === 'away' && l.lineupType === 'substitute')
+                            .map(l => (
+                              <span key={l.id} style={{ padding: '4px 8px', backgroundColor: '#e3f2fd', color: '#1565c0', borderRadius: '4px', fontSize: '13px' }}>
+                                #{l.player?.jerseyNumber} {l.player?.name}
+                              </span>
+                            ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
         {selectedMatch && (isEditing || (editData?.events.filter(e => e.teamType === 'home').length || 0) > 0) && (
           <div className="form-section">

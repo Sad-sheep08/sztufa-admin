@@ -98,6 +98,8 @@ export interface Match {
   status: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';
   mvpPlayerId?: string | null;
   mvpPlayerName?: string | null;
+  seasonId?: string;
+  lineups?: any[];
   createdAt?: string;
   updatedAt?: string;
 }

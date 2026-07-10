@@ -115,6 +115,18 @@ export const teamApi = {
     });
     return handleResponse<TeamDTO>(response);
   },
+
+  getPlayers: async (id: string, seasonId?: string): Promise<PlayerDTO[]> => {
+    let url = `${BASE_URL}/teams/${id}/players`;
+    if (seasonId) {
+      url += `?seasonId=${seasonId}`;
+    }
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<PlayerDTO[]>(response);
+  },
 };
 
 export const playerApi = {
