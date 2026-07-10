@@ -30,6 +30,20 @@ const TeamManagementPage: React.FC = () => {
   const [availableTeams, setAvailableTeams] = useState<TeamDTO[]>([]);
   const [homeTeamPlayers, setHomeTeamPlayers] = useState<PlayerDTO[]>([]);
   const [awayTeamPlayers, setAwayTeamPlayers] = useState<PlayerDTO[]>([]);
+  const [lineups, setLineups] = useState<{ playerId: string; teamType: 'home' | 'away'; lineupType: 'starting' | 'substitute' }[]>([]);
+
+  const handleLineupChange = (playerId: string, teamType: 'home' | 'away', lineupType: 'starting' | 'substitute' | 'none') => {
+    let updatedLineups = [...lineups];
+    updatedLineups = updatedLineups.filter(l => l.playerId !== playerId);
+    if (lineupType !== 'none') {
+      updatedLineups.push({
+        playerId,
+        teamType,
+        lineupType
+      });
+    }
+    setLineups(updatedLineups);
+  };
 
   const loadTeams = async () => {
     try {
@@ -363,6 +377,11 @@ const TeamManagementPage: React.FC = () => {
         status: 'finished',
         goals: goals,
         events: events,
+        lineups: lineups.map(l => ({
+          playerId: l.playerId,
+          teamType: l.teamType,
+          lineupType: l.lineupType
+        }))
       };
 
       console.log('正在提交比赛数据到后端:', matchDTO);
@@ -389,6 +408,7 @@ const TeamManagementPage: React.FC = () => {
       setSavedMatch(match);
       setIsSaved(true);
       setError(null);
+      setLineups([]);
 
       setTimeout(() => {
         setIsSaved(false);
@@ -434,6 +454,7 @@ const TeamManagementPage: React.FC = () => {
         homeTeamName: team.teamName,
       });
       loadTeamPlayers(team.id || '', 'home');
+      setLineups(prev => prev.filter(l => l.teamType !== 'home'));
     } else {
       setFormData({
         ...formData,
@@ -441,6 +462,7 @@ const TeamManagementPage: React.FC = () => {
         awayTeamName: team.teamName,
       });
       loadTeamPlayers(team.id || '', 'away');
+      setLineups(prev => prev.filter(l => l.teamType !== 'away'));
     }
     setError(null);
   };
@@ -649,6 +671,172 @@ const TeamManagementPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* 阵容配置面板 */}
+          {(formData.homeTeamId || formData.awayTeamId) && (
+            <div className="form-section">
+              <div className="section-header">
+                <h2 className="form-title">
+                  <span className="icon">🏃‍♂️</span>
+                  首发与替补名单配置
+                </h2>
+              </div>
+              
+              <div className="lineups-admin-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                {/* 主队名单 */}
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', borderBottom: '2px solid #ddd', paddingBottom: '6px' }}>
+                    {formData.homeTeamName || '主队'} (主队)
+                  </h3>
+                  
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '12px' }}>
+                    {homeTeamPlayers.length === 0 ? (
+                      <p style={{ color: '#999', textAlign: 'center', padding: '20px 0' }}>暂无球员数据，请先录入名册</p>
+                    ) : (
+                      homeTeamPlayers.map(player => {
+                        const lineup = lineups.find(l => l.playerId === player.id);
+                        const status = lineup ? lineup.lineupType : 'none';
+                        
+                        return (
+                          <div key={player.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f9f9f9' }}>
+                            <div>
+                              <span style={{ display: 'inline-block', width: '30px', fontWeight: 'bold', color: '#666' }}>
+                                #{player.jerseyNumber}
+                              </span>
+                              <span>{player.name}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleLineupChange(player.id || '', 'home', 'starting')}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: status === 'starting' ? '#4caf50' : '#fff',
+                                  color: status === 'starting' ? '#fff' : '#333',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                首发
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleLineupChange(player.id || '', 'home', 'substitute')}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: status === 'substitute' ? '#2196f3' : '#fff',
+                                  color: status === 'substitute' ? '#fff' : '#333',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                替补
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleLineupChange(player.id || '', 'home', 'none')}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: status === 'none' ? '#e0e0e0' : '#fff',
+                                  color: '#333',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                未上场
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* 客队名单 */}
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', borderBottom: '2px solid #ddd', paddingBottom: '6px' }}>
+                    {formData.awayTeamName || '客队'} (客队)
+                  </h3>
+                  
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '12px' }}>
+                    {awayTeamPlayers.length === 0 ? (
+                      <p style={{ color: '#999', textAlign: 'center', padding: '20px 0' }}>暂无球员数据，请先录入名册</p>
+                    ) : (
+                      awayTeamPlayers.map(player => {
+                        const lineup = lineups.find(l => l.playerId === player.id);
+                        const status = lineup ? lineup.lineupType : 'none';
+                        
+                        return (
+                          <div key={player.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f9f9f9' }}>
+                            <div>
+                              <span style={{ display: 'inline-block', width: '30px', fontWeight: 'bold', color: '#666' }}>
+                                #{player.jerseyNumber}
+                              </span>
+                              <span>{player.name}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleLineupChange(player.id || '', 'away', 'starting')}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: status === 'starting' ? '#4caf50' : '#fff',
+                                  color: status === 'starting' ? '#fff' : '#333',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                首发
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleLineupChange(player.id || '', 'away', 'substitute')}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: status === 'substitute' ? '#2196f3' : '#fff',
+                                  color: status === 'substitute' ? '#fff' : '#333',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                替补
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleLineupChange(player.id || '', 'away', 'none')}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: status === 'none' ? '#e0e0e0' : '#fff',
+                                  color: '#333',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                未上场
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 主队事件记录 */}
           <div className="form-section">
