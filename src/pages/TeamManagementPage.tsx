@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Plus, Trash2, Save, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Goal, MatchFormData, Match, MatchEvent } from '../types';
 import { generateId } from '../utils';
-import { matchApi, teamApi, playerApi } from '../api/service';
+import { matchApi, teamApi } from '../api/service';
 import { MatchDTO, TeamDTO, PlayerDTO } from '../api/types';
 
 const TeamManagementPage: React.FC = () => {
@@ -57,11 +57,11 @@ const TeamManagementPage: React.FC = () => {
   const loadTeamPlayers = async (teamId: string, teamType: 'home' | 'away') => {
     if (!teamId) return;
     try {
-      const response = await playerApi.getAll(1, 100, teamId);
+      const players = await teamApi.getPlayers(teamId);
       if (teamType === 'home') {
-        setHomeTeamPlayers(response.data);
+        setHomeTeamPlayers(players);
       } else {
-        setAwayTeamPlayers(response.data);
+        setAwayTeamPlayers(players);
       }
     } catch (err) {
       console.error('加载球队球员失败:', err);
@@ -147,6 +147,8 @@ const TeamManagementPage: React.FC = () => {
       subPlayerName: player?.name || '',
       subJerseyNumber: player?.jerseyNumber || '',
     };
+    setFormData({ ...formData, events: updatedEvents });
+    setError(null);
   };
 
   const handleAssistPlayerSelect = (index: number, playerId: string) => {

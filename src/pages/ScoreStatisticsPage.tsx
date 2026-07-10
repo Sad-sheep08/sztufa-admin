@@ -22,14 +22,18 @@ const MatchViewEditPage: React.FC = () => {
 
   const [seasons, setSeasons] = useState<any[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all');
+  const [seasonsLoaded, setSeasonsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     loadSeasons();
   }, []);
 
   useEffect(() => {
-    loadMatches();
-  }, [selectedSeasonId]);
+    // 等赛季数据加载完毕后再请求比赛，避免初始 'all' 状态导致加载全部赛季比赛
+    if (seasonsLoaded) {
+      loadMatches();
+    }
+  }, [selectedSeasonId, seasonsLoaded]);
 
   const loadSeasons = async () => {
     try {
@@ -39,8 +43,12 @@ const MatchViewEditPage: React.FC = () => {
       if (active) {
         setSelectedSeasonId(active.id);
       }
+      // 赛季数据已确定，允许加载比赛
+      setSeasonsLoaded(true);
     } catch (err) {
       console.error('加载赛季列表失败:', err);
+      // 即使失败也要标记为已加载，否则比赛永远不会加载
+      setSeasonsLoaded(true);
     }
   };
 
@@ -60,6 +68,7 @@ const MatchViewEditPage: React.FC = () => {
   const loadMatches = async () => {
     setIsLoading(true);
     try {
+      console.log('[ScoreStatisticsPage.loadMatches] requesting matches for selectedSeasonId:', selectedSeasonId);
       const response = await matchApi.getAll(1, 100, undefined, selectedSeasonId);
       const matchList: Match[] = response.data.map((m: MatchDTO) => {
         const homeGoals = (m.goals || []).filter(g => g.teamType === 'home');
@@ -563,10 +572,12 @@ const MatchViewEditPage: React.FC = () => {
                         <td>{formatMatchTime(match.matchTime)}</td>
                         <td className="team-name-cell home">{match.homeTeamName}</td>
                         <td className="team-name-cell away">{match.awayTeamName}</td>
-                        <td className="score-cell">
-                          <span className="score-value home">{match.homeTeamScore}</span>
-                          <span className="score-separator">:</span>
-                          <span className="score-value away">{match.awayTeamScore}</span>
+                        <td>
+                          <div className="score-cell">
+                            <span className="score-value home">{match.homeTeamScore}</span>
+                            <span className="score-separator">:</span>
+                            <span className="score-value away">{match.awayTeamScore}</span>
+                          </div>
                         </td>
                         <td>
                           <span className={`status-badge ${status.color}`}>{status.text}</span>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, Plus, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelImporter from '../components/ExcelImporter';
-import { teamApi, playerApi, matchApi } from '../api/service';
+import { teamApi, playerApi, matchApi, seasonApi } from '../api/service';
 import { TeamDTO, PlayerDTO } from '../api/types';
 import { Team, Player } from '../types';
 import { generateId } from '../utils';
@@ -20,16 +20,27 @@ const TeamViewEditPage: React.FC = () => {
   const [editData, setEditData] = useState<Team | null>(null);
   const [showImporter, setShowImporter] = useState(false);
   const [allMatches, setAllMatches] = useState<any[]>([]);
+  const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
+  const [activeSeasonName, setActiveSeasonName] = useState<string>('');
 
   useEffect(() => {
     loadTeams();
-    loadMatches();
+    loadActiveSeasonAndMatches();
   }, []);
 
-  const loadMatches = async () => {
+  const loadActiveSeasonAndMatches = async () => {
     try {
-      const response = await matchApi.getAll(1, 100);
-      setAllMatches(response.data || []);
+      const seasons = await seasonApi.getAll();
+      const active = seasons.find((s: any) => s.status === 'active');
+      if (active) {
+        setActiveSeasonId(active.id);
+        setActiveSeasonName(active.name);
+        const response = await matchApi.getAll(1, 200, undefined, active.id);
+        setAllMatches(response.data || []);
+      } else {
+        // 没有活跃赛季时，不加载任何比赛数据（避免混入归档赛季数据）
+        setAllMatches([]);
+      }
     } catch (err) {
       console.error('加载比赛记录失败:', err);
     }
@@ -570,7 +581,7 @@ const TeamViewEditPage: React.FC = () => {
               
               {!isEditing && (
                 <div className="form-group" style={{ gridColumn: 'span 3', marginTop: '10px' }}>
-                  <label>赛季数据与战绩走势</label>
+                  <label>赛季数据与战绩走势{activeSeasonName ? `（${activeSeasonName}）` : ''}</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '8px' }}>
                     <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', padding: '8px 16px', borderRadius: '6px', fontSize: '14px', color: '#495057' }}>
                       零封场次: <strong style={{ color: '#2b8a3e', fontSize: '16px' }}>{getTeamStats(selectedTeam.id).cleanSheets}</strong> 场
