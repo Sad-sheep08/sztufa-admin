@@ -330,8 +330,11 @@ export const uploadApi = {
 };
 
 export const auditLogApi = {
-  getAll: async (page = 1, limit = 20): Promise<{ data: AuditLogDTO[]; total: number; page: number; limit: number }> => {
-    const response = await fetch(`${BASE_URL}/audit-logs?page=${page}&limit=${limit}`, {
+  getAll: async (page = 1, limit = 20, username = '', action = ''): Promise<{ data: AuditLogDTO[]; total: number; page: number; limit: number }> => {
+    let url = `${BASE_URL}/audit-logs?page=${page}&limit=${limit}`;
+    if (username) url += `&username=${encodeURIComponent(username)}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: createHeaders(),
     });
