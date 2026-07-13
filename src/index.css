@@ -2190,4 +2190,40 @@ body {
   }
 }
 
+/* 移动端阵容配置面板与筛选工具排版优化 */
+@media (max-width: 768px) {
+  /* 阵容双列网格自适应变垂直单列 */
+  .lineups-admin-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  /* 增大阵容编辑按钮尺寸以便于手机触控 */
+  .lineups-admin-grid button {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+  }
+
+  /* 顶部标题栏筛选框与按钮自适应占满整行 */
+  .section-header > div {
+    margin-left: 0 !important;
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    margin-top: 10px !important;
+  }
+  
+  .section-header > div > div {
+    width: 100% !important;
+    justify-content: space-between !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .section-header .refresh-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+
 
