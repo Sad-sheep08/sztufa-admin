@@ -531,15 +531,21 @@ const TeamManagementPage: React.FC = () => {
 
               <div className="form-group">
                 <label>比赛地点</label>
-                <input
-                  type="text"
+                <select
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
                   className="form-input"
-                  placeholder="请输入比赛地点"
                   required
-                />
+                >
+                  <option value="">请选择比赛地点</option>
+                  <option value="五人场">五人场</option>
+                  <option value="北区">北区</option>
+                  <option value="南区">南区</option>
+                  {formData.location && !['五人场', '北区', '南区'].includes(formData.location) && (
+                    <option value={formData.location}>{formData.location}</option>
+                  )}
+                </select>
               </div>
             </div>
           </div>

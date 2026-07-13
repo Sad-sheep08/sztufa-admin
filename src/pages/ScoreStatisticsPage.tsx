@@ -685,12 +685,19 @@ const MatchViewEditPage: React.FC = () => {
               <div className="form-group">
                 <label>比赛地点</label>
                 {isEditing ? (
-                  <input
-                    type="text"
+                  <select
                     value={editData?.location || ''}
                     onChange={(e) => handleFieldChange('location', e.target.value)}
                     className="form-input"
-                  />
+                  >
+                    <option value="">请选择比赛地点</option>
+                    <option value="五人场">五人场</option>
+                    <option value="北区">北区</option>
+                    <option value="南区">南区</option>
+                    {editData?.location && !['五人场', '北区', '南区'].includes(editData.location) && (
+                      <option value={editData.location}>{editData.location}</option>
+                    )}
+                  </select>
                 ) : (
                   <div className="form-value">
                     <MapPin size={14} style={{ marginRight: '6px' }} />
