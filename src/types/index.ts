@@ -62,7 +62,7 @@ export interface Goal {
 export interface MatchEvent {
   id?: string;
   eventTime: string;
-  eventType: 'goal' | 'own_goal' | 'penalty' | 'yellow_card' | 'red_card' | 'substitution';
+  eventType: 'goal' | 'own_goal' | 'penalty' | 'yellow_card' | 'red_card' | 'yellow_to_red' | 'substitution';
   playerId?: string | null;
   playerName?: string | null;
   jerseyNumber?: string | null;

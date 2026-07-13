@@ -1144,6 +1144,7 @@ const MatchViewEditPage: React.FC = () => {
                               <option value="substitution">🔄 换人</option>
                               <option value="yellow_card">🟨 黄牌</option>
                               <option value="red_card">🟥 红牌</option>
+                              <option value="yellow_to_red">🟨🟥 两黄变一红</option>
                             </select>
                           ) : (
                             <span>
@@ -1153,6 +1154,7 @@ const MatchViewEditPage: React.FC = () => {
                               {event.eventType === 'substitution' && '🔄 换人'}
                               {event.eventType === 'yellow_card' && '🟨 黄牌'}
                               {event.eventType === 'red_card' && '🟥 红牌'}
+                              {event.eventType === 'yellow_to_red' && '🟨🟥 两黄变一红'}
                             </span>
                           )}
                         </td>
@@ -1359,6 +1361,7 @@ const MatchViewEditPage: React.FC = () => {
                               <option value="substitution">🔄 换人</option>
                               <option value="yellow_card">🟨 黄牌</option>
                               <option value="red_card">🟥 红牌</option>
+                              <option value="yellow_to_red">🟨🟥 两黄变一红</option>
                             </select>
                           ) : (
                             <span>
@@ -1368,6 +1371,7 @@ const MatchViewEditPage: React.FC = () => {
                               {event.eventType === 'substitution' && '🔄 换人'}
                               {event.eventType === 'yellow_card' && '🟨 黄牌'}
                               {event.eventType === 'red_card' && '🟥 红牌'}
+                              {event.eventType === 'yellow_to_red' && '🟨🟥 两黄变一红'}
                             </span>
                           )}
                         </td>
