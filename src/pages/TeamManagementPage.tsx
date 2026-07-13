@@ -869,7 +869,7 @@ const TeamManagementPage: React.FC = () => {
               </div>
             ) : (
               <div className="player-table-wrapper">
-                <table className="player-table">
+                <table className="player-table events-input-table">
                   <thead>
                     <tr>
                       <th style={{ width: '120px' }}>时间</th>
@@ -885,7 +885,7 @@ const TeamManagementPage: React.FC = () => {
                       if (event.teamType !== 'home') return null;
                       return (
                         <tr key={index}>
-                          <td>
+                          <td data-label="时间">
                             <input
                               type="text"
                               value={event.eventTime}
@@ -895,7 +895,7 @@ const TeamManagementPage: React.FC = () => {
                               required
                             />
                           </td>
-                          <td>
+                          <td data-label="事件类型">
                             <select
                               value={event.eventType}
                               onChange={(e) => updateEvent(index, 'eventType', e.target.value as any)}
@@ -911,7 +911,7 @@ const TeamManagementPage: React.FC = () => {
                               <option value="yellow_to_red">🟨🟥 两黄变一红</option>
                             </select>
                           </td>
-                          <td>
+                          <td data-label="球员">
                             {event.eventType === 'substitution' ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <select
@@ -976,7 +976,7 @@ const TeamManagementPage: React.FC = () => {
                               </div>
                             )}
                           </td>
-                          <td>
+                          <td data-label="号码">
                             <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
                               {event.eventType === 'substitution' ? (
                                 <span>
@@ -988,7 +988,7 @@ const TeamManagementPage: React.FC = () => {
                               )}
                             </div>
                           </td>
-                          <td>
+                          <td data-label="事件描述">
                             <input
                               type="text"
                               value={event.description}
@@ -997,7 +997,7 @@ const TeamManagementPage: React.FC = () => {
                               placeholder={event.eventType === 'substitution' ? "选填，自动生成换人描述" : "选填，自动生成事件描述"}
                             />
                           </td>
-                          <td>
+                          <td data-label="操作">
                             <button
                               type="button"
                               onClick={() => removeEvent(index)}
@@ -1038,7 +1038,7 @@ const TeamManagementPage: React.FC = () => {
               </div>
             ) : (
               <div className="player-table-wrapper">
-                <table className="player-table">
+                <table className="player-table events-input-table">
                   <thead>
                     <tr>
                       <th style={{ width: '120px' }}>时间</th>
@@ -1054,7 +1054,7 @@ const TeamManagementPage: React.FC = () => {
                       if (event.teamType !== 'away') return null;
                       return (
                         <tr key={index}>
-                          <td>
+                          <td data-label="时间">
                             <input
                               type="text"
                               value={event.eventTime}
@@ -1064,7 +1064,7 @@ const TeamManagementPage: React.FC = () => {
                               required
                             />
                           </td>
-                          <td>
+                          <td data-label="事件类型">
                             <select
                               value={event.eventType}
                               onChange={(e) => updateEvent(index, 'eventType', e.target.value as any)}
@@ -1080,7 +1080,7 @@ const TeamManagementPage: React.FC = () => {
                               <option value="yellow_to_red">🟨🟥 两黄变一红</option>
                             </select>
                           </td>
-                          <td>
+                          <td data-label="球员">
                             {event.eventType === 'substitution' ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <select
@@ -1145,7 +1145,7 @@ const TeamManagementPage: React.FC = () => {
                               </div>
                             )}
                           </td>
-                          <td>
+                          <td data-label="号码">
                             <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
                               {event.eventType === 'substitution' ? (
                                 <span>
@@ -1157,7 +1157,7 @@ const TeamManagementPage: React.FC = () => {
                               )}
                             </div>
                           </td>
-                          <td>
+                          <td data-label="事件描述">
                             <input
                               type="text"
                               value={event.description}
@@ -1166,7 +1166,7 @@ const TeamManagementPage: React.FC = () => {
                               placeholder={event.eventType === 'substitution' ? "选填，自动生成换人描述" : "选填，自动生成事件描述"}
                             />
                           </td>
-                          <td>
+                          <td data-label="操作">
                             <button
                               type="button"
                               onClick={() => removeEvent(index)}

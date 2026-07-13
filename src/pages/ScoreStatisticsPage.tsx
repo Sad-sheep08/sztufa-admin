@@ -1099,7 +1099,7 @@ const MatchViewEditPage: React.FC = () => {
               )}
             </div>
             <div className="player-table-wrapper">
-              <table className="player-table">
+              <table className="player-table events-input-table">
                 <thead>
                   <tr>
                     <th style={{ width: '120px' }}>时间</th>
@@ -1116,7 +1116,7 @@ const MatchViewEditPage: React.FC = () => {
                       if (event.teamType !== 'home') return null;
                       return (
                         <tr key={index}>
-                          <td>
+                          <td data-label="时间">
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1130,7 +1130,7 @@ const MatchViewEditPage: React.FC = () => {
                             <span>{event.eventTime}</span>
                           )}
                         </td>
-                        <td>
+                        <td data-label="事件类型">
                           {isEditing ? (
                             <select
                               value={event.eventType}
@@ -1158,7 +1158,7 @@ const MatchViewEditPage: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td>
+                        <td data-label="球员">
                           {isEditing ? (
                             event.eventType === 'substitution' ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1241,7 +1241,7 @@ const MatchViewEditPage: React.FC = () => {
                             )
                           )}
                         </td>
-                        <td>
+                        <td data-label="号码">
                           <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
                             {event.eventType === 'substitution' ? (
                               <span>
@@ -1253,7 +1253,7 @@ const MatchViewEditPage: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td>
+                        <td data-label="事件描述">
                           {isEditing ? (
                             <input
                               type="text"
@@ -1267,7 +1267,7 @@ const MatchViewEditPage: React.FC = () => {
                           )}
                         </td>
                         {isEditing && (
-                          <td>
+                          <td data-label="操作">
                             <button
                               onClick={() => removeEvent(index)}
                               className="delete-btn small"
@@ -1316,7 +1316,7 @@ const MatchViewEditPage: React.FC = () => {
               )}
             </div>
             <div className="player-table-wrapper">
-              <table className="player-table">
+              <table className="player-table events-input-table">
                 <thead>
                   <tr>
                     <th style={{ width: '120px' }}>时间</th>
@@ -1333,7 +1333,7 @@ const MatchViewEditPage: React.FC = () => {
                       if (event.teamType !== 'away') return null;
                       return (
                         <tr key={index}>
-                          <td>
+                          <td data-label="时间">
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1347,7 +1347,7 @@ const MatchViewEditPage: React.FC = () => {
                             <span>{event.eventTime}</span>
                           )}
                         </td>
-                        <td>
+                        <td data-label="事件类型">
                           {isEditing ? (
                             <select
                               value={event.eventType}
@@ -1375,7 +1375,7 @@ const MatchViewEditPage: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td>
+                        <td data-label="球员">
                           {isEditing ? (
                             event.eventType === 'substitution' ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1458,7 +1458,7 @@ const MatchViewEditPage: React.FC = () => {
                             )
                           )}
                         </td>
-                        <td>
+                        <td data-label="号码">
                           <div className="form-value inline" style={{ fontSize: '0.85rem' }}>
                             {event.eventType === 'substitution' ? (
                               <span>
@@ -1470,7 +1470,7 @@ const MatchViewEditPage: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td>
+                        <td data-label="事件描述">
                           {isEditing ? (
                             <input
                               type="text"
@@ -1484,7 +1484,7 @@ const MatchViewEditPage: React.FC = () => {
                           )}
                         </td>
                         {isEditing && (
-                          <td>
+                          <td data-label="操作">
                             <button
                               onClick={() => removeEvent(index)}
                               className="delete-btn small"

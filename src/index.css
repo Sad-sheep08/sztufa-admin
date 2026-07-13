@@ -2115,3 +2115,79 @@ body {
   }
 }
 
+/* 移动端比赛事件录入表格卡片化优化 */
+@media (max-width: 768px) {
+  .events-input-table,
+  .events-input-table thead,
+  .events-input-table tbody,
+  .events-input-table th,
+  .events-input-table td,
+  .events-input-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  .events-input-table thead {
+    display: none !important;
+  }
+  
+  .events-input-table tr {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 16px !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
+  }
+  
+  .events-input-table td {
+    border: none !important;
+    padding: 6px 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    box-sizing: border-box !important;
+  }
+  
+  .events-input-table td::before {
+    content: attr(data-label) ":";
+    font-weight: 600 !important;
+    width: 80px !important;
+    min-width: 80px !important;
+    color: #4a5568 !important;
+    font-size: 0.85rem !important;
+    display: inline-block !important;
+  }
+  
+  .events-input-table td > input,
+  .events-input-table td > select,
+  .events-input-table td > div {
+    flex: 1 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .events-input-table td .delete-btn {
+    width: 100% !important;
+    padding: 8px 12px !important;
+    background-color: #fee2e2 !important;
+    color: #ef4444 !important;
+    border: 1px solid #fecaca !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+  }
+  
+  .events-input-table td .delete-btn::after {
+    content: "删除此事件" !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+  }
+}
+
+
