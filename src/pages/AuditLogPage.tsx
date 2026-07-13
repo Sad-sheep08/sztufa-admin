@@ -213,7 +213,7 @@ const AuditLogPage: React.FC = () => {
           ) : (
             <>
               <div className="player-table-wrapper">
-                <table className="player-table events-input-table">
+                <table className="player-table audit-logs-table">
                   <thead>
                     <tr>
                       <th style={{ width: '180px' }}>操作时间</th>

@@ -2305,5 +2305,57 @@ body {
   }
 }
 
+/* 移动端审计日志卡片自适应与文本换行优化 */
+@media (max-width: 768px) {
+  .audit-logs-table,
+  .audit-logs-table thead,
+  .audit-logs-table tbody,
+  .audit-logs-table th,
+  .audit-logs-table td,
+  .audit-logs-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .audit-logs-table thead {
+    display: none !important;
+  }
+
+  .audit-logs-table tr {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 16px !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
+  }
+
+  .audit-logs-table td {
+    border: none !important;
+    padding: 6px 0 !important;
+    display: block !important;
+    width: 100% !important;
+    white-space: normal !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+  }
+
+  .audit-logs-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600 !important;
+    color: #4a5568 !important;
+    font-size: 0.85rem !important;
+    display: inline-block !important;
+    margin-right: 6px !important;
+  }
+
+  .audit-logs-table td > span,
+  .audit-logs-table td > div {
+    display: inline !important;
+    white-space: normal !important;
+  }
+}
+
 
 
