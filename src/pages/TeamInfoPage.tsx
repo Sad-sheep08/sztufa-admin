@@ -163,26 +163,38 @@ const TeamInfoPage: React.FC = () => {
 
       // 第四步：为每个球员创建记录
       const savedPlayers: Player[] = [];
-      for (const player of players) {
-        const playerDTO: PlayerDTO = {
-          name: player.name,
-          studentId: player.studentId,
-          jerseyNumber: player.jerseyNumber,
-          photo: player.photo,
-          teamId: teamId || '',
-        };
+      try {
+        for (const player of players) {
+          const playerDTO: PlayerDTO = {
+            name: player.name,
+            studentId: player.studentId,
+            jerseyNumber: player.jerseyNumber,
+            photo: player.photo,
+            teamId: teamId || '',
+          };
 
-        console.log('正在创建球员:', playerDTO);
-        const savedPlayerData = await playerApi.create(playerDTO);
-        
-        savedPlayers.push({
-          id: savedPlayerData.id || generateId(),
-          name: savedPlayerData.name,
-          studentId: savedPlayerData.studentId,
-          jerseyNumber: savedPlayerData.jerseyNumber,
-          photo: savedPlayerData.photo || null,
-          teamId: savedPlayerData.teamId || '',
-        });
+          console.log('正在创建球员:', playerDTO);
+          const savedPlayerData = await playerApi.create(playerDTO);
+          
+          savedPlayers.push({
+            id: savedPlayerData.id || generateId(),
+            name: savedPlayerData.name,
+            studentId: savedPlayerData.studentId,
+            jerseyNumber: savedPlayerData.jerseyNumber,
+            photo: savedPlayerData.photo || null,
+            teamId: savedPlayerData.teamId || '',
+          });
+        }
+      } catch (playerErr) {
+        console.error('创建球员失败，正在清理删除刚才创建的球队:', teamId);
+        if (teamId) {
+          try {
+            await teamApi.delete(teamId);
+          } catch (deleteErr) {
+            console.error('清理删除球队失败:', deleteErr);
+          }
+        }
+        throw playerErr;
       }
 
       console.log('所有球员创建成功，共', savedPlayers.length, '名球员');
