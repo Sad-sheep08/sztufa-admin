@@ -16,6 +16,7 @@ const TeamViewEditPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
   const [editData, setEditData] = useState<Team | null>(null);
   const [showImporter, setShowImporter] = useState(false);
@@ -170,7 +171,37 @@ const TeamViewEditPage: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
+
+    // 计算总步骤以设置进度条
+    const originalPlayers = selectedTeam?.players || [];
+    const currentPlayers = editData.players || [];
+    const playersToDelete = originalPlayers.filter(
+      op => !currentPlayers.some(cp => cp.id === op.id)
+    );
+    const playersToCreate = [];
+    const playersToUpdate = [];
+    for (const p of currentPlayers) {
+      const original = originalPlayers.find(op => op.id === p.id);
+      if (!original) {
+        playersToCreate.push(p);
+      } else if (
+        original.name !== p.name ||
+        original.studentId !== p.studentId ||
+        original.jerseyNumber !== p.jerseyNumber ||
+        original.status !== p.status ||
+        Number(original.yellowCards) !== Number(p.yellowCards) ||
+        Number(original.redCards) !== Number(p.redCards)
+      ) {
+        playersToUpdate.push(p);
+      }
+    }
+
+    const totalSteps = 1 + playersToDelete.length + playersToCreate.length + playersToUpdate.length;
+    let currentStep = 0;
+
     try {
+      setSaveProgress({ current: currentStep, total: totalSteps, message: '正在更新球队基本信息...' });
+
       const editTeamDTO = {
         teamName: editData.teamName,
         teamDoctor: editData.teamDoctor,
@@ -184,55 +215,65 @@ const TeamViewEditPage: React.FC = () => {
 
       // 1. 保存球队基本信息
       await teamApi.update(editData.id, editTeamDTO);
-
-      // 2. 比对并同步球员信息
-      const originalPlayers = selectedTeam?.players || [];
-      const currentPlayers = editData.players || [];
+      currentStep++;
+      setSaveProgress({ current: currentStep, total: totalSteps, message: '球队基本信息更新完成，开始同步球员数据...' });
 
       // 2a. 删除已移除的球员
-      const playersToDelete = originalPlayers.filter(
-        op => !currentPlayers.some(cp => cp.id === op.id)
-      );
       for (const p of playersToDelete) {
+        setSaveProgress({
+          current: currentStep,
+          total: totalSteps,
+          message: `正在删除已移除的球员: ${p.name}...`
+        });
         await playerApi.delete(p.id);
+        currentStep++;
       }
 
-      // 2b. 新建或更新现存球员
-      for (const p of currentPlayers) {
-        const original = originalPlayers.find(op => op.id === p.id);
-        if (!original) {
-          // 新增球员 (ID由后端生成，不传ID)
-          const playerDTO = {
-            name: p.name,
-            studentId: p.studentId,
-            jerseyNumber: p.jerseyNumber,
-            status: p.status || 'active',
-            yellowCards: Number(p.yellowCards) || 0,
-            redCards: Number(p.redCards) || 0,
-            teamId: editData.id,
-          };
-          await playerApi.create(playerDTO);
-        } else if (
-          original.name !== p.name ||
-          original.studentId !== p.studentId ||
-          original.jerseyNumber !== p.jerseyNumber ||
-          original.status !== p.status ||
-          Number(original.yellowCards) !== Number(p.yellowCards) ||
-          Number(original.redCards) !== Number(p.redCards)
-        ) {
-          // 更新球员信息
-          const playerDTO = {
-            name: p.name,
-            studentId: p.studentId,
-            jerseyNumber: p.jerseyNumber,
-            status: p.status || 'active',
-            yellowCards: Number(p.yellowCards) || 0,
-            redCards: Number(p.redCards) || 0,
-            teamId: editData.id,
-          };
-          await playerApi.update(p.id, playerDTO);
-        }
+      // 2b. 新增球员
+      for (const p of playersToCreate) {
+        setSaveProgress({
+          current: currentStep,
+          total: totalSteps,
+          message: `正在添加新球员: ${p.name} (学号 ${p.studentId})...`
+        });
+        const playerDTO = {
+          name: p.name,
+          studentId: p.studentId,
+          jerseyNumber: p.jerseyNumber,
+          status: p.status || 'active',
+          yellowCards: Number(p.yellowCards) || 0,
+          redCards: Number(p.redCards) || 0,
+          teamId: editData.id,
+        };
+        await playerApi.create(playerDTO);
+        currentStep++;
       }
+
+      // 2c. 更新球员信息
+      for (const p of playersToUpdate) {
+        setSaveProgress({
+          current: currentStep,
+          total: totalSteps,
+          message: `正在更新球员数据: ${p.name}...`
+        });
+        const playerDTO = {
+          name: p.name,
+          studentId: p.studentId,
+          jerseyNumber: p.jerseyNumber,
+          status: p.status || 'active',
+          yellowCards: Number(p.yellowCards) || 0,
+          redCards: Number(p.redCards) || 0,
+          teamId: editData.id,
+        };
+        await playerApi.update(p.id, playerDTO);
+        currentStep++;
+      }
+
+      setSaveProgress({
+        current: totalSteps,
+        total: totalSteps,
+        message: '同步完成！正在重新加载数据...'
+      });
 
       setIsSaved(true);
       setError(null);
@@ -266,6 +307,7 @@ const TeamViewEditPage: React.FC = () => {
       setError('更新失败: ' + (err instanceof Error ? err.message : '网络连接错误或学号已被占用'));
     } finally {
       setIsLoading(false);
+      setSaveProgress(null);
     }
   };
 
@@ -401,7 +443,7 @@ const TeamViewEditPage: React.FC = () => {
                     <th>球队名称</th>
                     <th>主教练</th>
                     <th>领队</th>
-                    <th>操作</th>
+                    <th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -647,13 +689,13 @@ const TeamViewEditPage: React.FC = () => {
               <table className="player-table">
                 <thead>
                   <tr>
-                    <th>姓名</th>
-                    <th>学号</th>
-                    <th>球衣号码</th>
-                    <th>黄牌数</th>
-                    <th>红牌数</th>
-                    <th>可用状态</th>
-                    {isEditing && <th>操作</th>}
+                    <th style={{ width: '120px', minWidth: '120px' }}>姓名</th>
+                    <th style={{ width: '160px', minWidth: '160px' }}>学号</th>
+                    <th style={{ width: '100px', minWidth: '100px' }}>球衣号码</th>
+                    <th style={{ width: '90px', minWidth: '90px' }}>黄牌数</th>
+                    <th style={{ width: '90px', minWidth: '90px' }}>红牌数</th>
+                    <th style={{ width: '120px', minWidth: '120px' }}>可用状态</th>
+                    {isEditing && <th style={{ width: '60px', minWidth: '60px' }}>操作</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -667,7 +709,7 @@ const TeamViewEditPage: React.FC = () => {
                             onChange={(e) => handlePlayerFieldChange(index, 'name', e.target.value)}
                             className="form-input"
                             placeholder="姓名"
-                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px' }}
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100%', boxSizing: 'border-box' }}
                           />
                         </td>
                         <td>
@@ -677,7 +719,7 @@ const TeamViewEditPage: React.FC = () => {
                             onChange={(e) => handlePlayerFieldChange(index, 'studentId', e.target.value)}
                             className="form-input"
                             placeholder="学号"
-                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px' }}
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100%', boxSizing: 'border-box' }}
                           />
                         </td>
                         <td>
@@ -687,7 +729,7 @@ const TeamViewEditPage: React.FC = () => {
                             onChange={(e) => handlePlayerFieldChange(index, 'jerseyNumber', e.target.value)}
                             className="form-input"
                             placeholder="号码"
-                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px' }}
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100%', boxSizing: 'border-box' }}
                           />
                         </td>
                         <td>
@@ -697,7 +739,7 @@ const TeamViewEditPage: React.FC = () => {
                             value={player.yellowCards || 0}
                             onChange={(e) => handlePlayerFieldChange(index, 'yellowCards', parseInt(e.target.value) || 0)}
                             className="form-input"
-                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '70px' }}
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100%', boxSizing: 'border-box' }}
                           />
                         </td>
                         <td>
@@ -707,7 +749,7 @@ const TeamViewEditPage: React.FC = () => {
                             value={player.redCards || 0}
                             onChange={(e) => handlePlayerFieldChange(index, 'redCards', parseInt(e.target.value) || 0)}
                             className="form-input"
-                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '70px' }}
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100%', boxSizing: 'border-box' }}
                           />
                         </td>
                         <td>
@@ -715,7 +757,7 @@ const TeamViewEditPage: React.FC = () => {
                             value={player.status || 'active'}
                             onChange={(e) => handlePlayerFieldChange(index, 'status', e.target.value)}
                             className="form-input"
-                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100px' }}
+                            style={{ margin: 0, padding: '4px 8px', fontSize: '14px', height: '32px', width: '100%', boxSizing: 'border-box' }}
                           >
                             <option value="active">🟢 可用</option>
                             <option value="suspended">🔴 停赛</option>
@@ -796,6 +838,57 @@ const TeamViewEditPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      {saveProgress && (
+        <div className="progress-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <div className="progress-card" style={{
+            backgroundColor: '#ffffff',
+            padding: '24px 32px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            width: '90%',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#333' }}>
+              正在同步球队与球员数据...
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666' }}>
+              {saveProgress.message} ({saveProgress.current}/{saveProgress.total})
+            </p>
+            <div className="progress-bar-container" style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: '#e9ecef',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              marginBottom: '8px',
+            }}>
+              <div className="progress-bar-fill" style={{
+                width: `${(saveProgress.current / saveProgress.total) * 100}%`,
+                height: '100%',
+                backgroundColor: '#3b5bdb',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+            <span style={{ fontSize: '12px', color: '#868e96' }}>
+              请勿关闭或刷新页面
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

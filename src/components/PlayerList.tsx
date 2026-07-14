@@ -155,56 +155,58 @@ const PlayerList: React.FC<PlayerListProps> = ({
           <p>暂无球员，请添加球员或通过Excel导入</p>
         </div>
       ) : (
-        <table className="player-table">
-          <thead>
-            <tr>
-              <th>照片</th>
-              <th>姓名</th>
-              <th>学号</th>
-              <th>球衣号码</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((player) => (
-              <tr key={player.id}>
-                <td>
-                  <div className="player-photo-upload">
-                    {player.photo ? (
-                      <img
-                        src={player.photo}
-                        alt={player.name}
-                        className="player-photo"
-                      />
-                    ) : (
-                      <div className="no-photo">
-                        <User size={24} />
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handlePlayerPhotoUpload(player.id, e.target.files?.[0] || null)}
-                      className="file-input"
-                      title="点击上传照片"
-                    />
-                  </div>
-                </td>
-                <td>{player.name}</td>
-                <td>{player.studentId}</td>
-                <td>{player.jerseyNumber}</td>
-                <td>
-                  <button
-                    onClick={() => onRemovePlayer(player.id)}
-                    className="delete-btn"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
+        <div className="player-table-wrapper">
+          <table className="player-table">
+            <thead>
+              <tr>
+                <th style={{ width: '80px', minWidth: '80px' }}>照片</th>
+                <th style={{ width: '120px', minWidth: '120px' }}>姓名</th>
+                <th style={{ width: '160px', minWidth: '160px' }}>学号</th>
+                <th style={{ width: '100px', minWidth: '100px' }}>球衣号码</th>
+                <th style={{ width: '80px', minWidth: '80px', textAlign: 'center' }}>操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {players.map((player) => (
+                <tr key={player.id}>
+                  <td>
+                    <div className="player-photo-upload">
+                      {player.photo ? (
+                        <img
+                          src={player.photo}
+                          alt={player.name}
+                          className="player-photo"
+                        />
+                      ) : (
+                        <div className="no-photo">
+                          <User size={24} />
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePlayerPhotoUpload(player.id, e.target.files?.[0] || null)}
+                        className="file-input"
+                        title="点击上传照片"
+                      />
+                    </div>
+                  </td>
+                  <td>{player.name}</td>
+                  <td>{player.studentId}</td>
+                  <td>{player.jerseyNumber}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      onClick={() => onRemovePlayer(player.id)}
+                      className="delete-btn"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

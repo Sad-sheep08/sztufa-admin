@@ -31,6 +31,7 @@ const TeamInfoPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedTeam, setSavedTeam] = useState<Team | null>(null);
+  const [saveProgress, setSaveProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
   const handleAddPlayer = (player: Omit<Player, 'id'>) => {
     setPlayers((prev) => [...prev, { ...player, id: generateId() }]);
@@ -113,7 +114,13 @@ const TeamInfoPage: React.FC = () => {
 
     setIsLoading(true);
 
+    // 计算总步骤（1个球队创建，以及多个球员创建）
+    const totalSteps = 1 + players.length;
+    let currentStep = 0;
+
     try {
+      setSaveProgress({ current: currentStep, total: totalSteps, message: '正在上传图片并准备数据...' });
+
       // 第一步：将图片上传到 Cloudflare R2
       let teamLogoUrl: string | null = null;
       let homeJerseyUrl: string | null = null;
@@ -138,6 +145,8 @@ const TeamInfoPage: React.FC = () => {
         }
       }
 
+      setSaveProgress({ current: currentStep, total: totalSteps, message: '正在向数据库创建球队信息...' });
+
       // 第二步：准备球队数据（不包含players，因为需要先创建球队获取ID）
       const teamDTO: TeamDTO = {
         teamName: teamFormData.teamName,
@@ -158,6 +167,7 @@ const TeamInfoPage: React.FC = () => {
       // 第三步：创建球队
       const savedTeamData = await teamApi.create(teamDTO);
       const teamId = savedTeamData.id;
+      currentStep++;
 
       console.log('球队创建成功，球队ID:', teamId);
 
@@ -165,6 +175,11 @@ const TeamInfoPage: React.FC = () => {
       const savedPlayers: Player[] = [];
       try {
         for (const player of players) {
+          setSaveProgress({
+            current: currentStep,
+            total: totalSteps,
+            message: `正在添加球员: ${player.name} (学号 ${player.studentId})...`
+          });
           const playerDTO: PlayerDTO = {
             name: player.name,
             studentId: player.studentId,
@@ -184,6 +199,7 @@ const TeamInfoPage: React.FC = () => {
             photo: savedPlayerData.photo || null,
             teamId: savedPlayerData.teamId || '',
           });
+          currentStep++;
         }
       } catch (playerErr) {
         console.error('创建球员失败，正在清理删除刚才创建的球队:', teamId);
@@ -196,6 +212,12 @@ const TeamInfoPage: React.FC = () => {
         }
         throw playerErr;
       }
+
+      setSaveProgress({
+        current: totalSteps,
+        total: totalSteps,
+        message: '同步完成！正在重新渲染...'
+      });
 
       console.log('所有球员创建成功，共', savedPlayers.length, '名球员');
 
@@ -234,6 +256,7 @@ const TeamInfoPage: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+      setSaveProgress(null);
     }
   };
 
@@ -387,6 +410,57 @@ const TeamInfoPage: React.FC = () => {
           </div>
         )}
       </footer>
+
+      {saveProgress && (
+        <div className="progress-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <div className="progress-card" style={{
+            backgroundColor: '#ffffff',
+            padding: '24px 32px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            width: '90%',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#333' }}>
+              正在同步球队与球员数据...
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666' }}>
+              {saveProgress.message} ({saveProgress.current}/{saveProgress.total})
+            </p>
+            <div className="progress-bar-container" style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: '#e9ecef',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              marginBottom: '8px',
+            }}>
+              <div className="progress-bar-fill" style={{
+                width: `${(saveProgress.current / saveProgress.total) * 100}%`,
+                height: '100%',
+                backgroundColor: '#3b5bdb',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+            <span style={{ fontSize: '12px', color: '#868e96' }}>
+              请勿关闭或刷新页面
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
