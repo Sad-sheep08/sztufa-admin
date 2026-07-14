@@ -2024,6 +2024,10 @@ body {
     margin-top: 12px;
   }
 
+  .player-table {
+    min-width: 850px;
+  }
+
   .player-table th,
   .player-table td {
     padding: 10px 8px;
