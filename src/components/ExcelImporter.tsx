@@ -39,13 +39,19 @@ const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImport }) => {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        const players: Omit<Player, 'id'>[] = jsonData.map((row: any) => ({
-          name: row['姓名'] || row['name'] || '',
-          studentId: row['学号'] || row['studentId'] || row['student_id'] || '',
-          jerseyNumber: String(row['球衣号码'] || row['jerseyNumber'] || row['jersey_number'] || ''),
-          photo: null,
-          teamId: '',
-        }));
+        const players: Omit<Player, 'id'>[] = jsonData.map((row: any) => {
+          const rawName = row['姓名'] || row['name'] || '';
+          const rawStudentId = row['学号'] || row['studentId'] || row['student_id'] || '';
+          const rawJerseyNumber = row['球衣号码'] || row['jerseyNumber'] || row['jersey_number'] || '';
+
+          return {
+            name: String(rawName).trim(),
+            studentId: String(rawStudentId).trim(),
+            jerseyNumber: String(rawJerseyNumber).trim(),
+            photo: null,
+            teamId: '',
+          };
+        });
 
         const validPlayers = players.filter(
           (p) => p.name && p.studentId && p.jerseyNumber

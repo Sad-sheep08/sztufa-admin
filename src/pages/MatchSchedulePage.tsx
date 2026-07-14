@@ -263,7 +263,7 @@ const TeamViewEditPage: React.FC = () => {
       }, 2000);
     } catch (err) {
       console.error('更新系统信息失败:', err);
-      setError('更新失败，网络连接错误或学号已被占用');
+      setError('更新失败: ' + (err instanceof Error ? err.message : '网络连接错误或学号已被占用'));
     } finally {
       setIsLoading(false);
     }

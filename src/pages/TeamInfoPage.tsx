@@ -216,19 +216,7 @@ const TeamInfoPage: React.FC = () => {
     } catch (err) {
       console.error('保存球队信息失败:', err);
       if (err instanceof Error) {
-        if (err.message.includes('Failed to fetch')) {
-          setError('网络连接失败，请检查网络或稍后重试');
-        } else if (err.message.includes('400')) {
-          setError('请求参数错误，请检查表单数据是否完整');
-        } else if (err.message.includes('401')) {
-          setError('未授权访问，请先登录');
-        } else if (err.message.includes('409')) {
-          setError('数据冲突：球队名称或学号已存在');
-        } else if (err.message.includes('500')) {
-          setError('服务器内部错误，请稍后重试');
-        } else {
-          setError('保存失败: ' + err.message);
-        }
+        setError('保存失败: ' + err.message);
       } else {
         setError('保存失败，请稍后重试');
       }
