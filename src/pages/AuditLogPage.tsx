@@ -92,27 +92,53 @@ const AuditLogPage: React.FC = () => {
 
     // 如果该日志是后端合并的批量操作记录
     if (log.subLogs && log.subLogs.length > 0) {
+      // 收集合并记录里所有被修改的属性名称（去重）
+      const allAttrs: string[] = [];
+      log.subLogs.forEach(sub => {
+        const subDetails = sub.details || '';
+        const subSplit = subDetails.indexOf(' 的信息: ');
+        const subSplit2 = subDetails.indexOf(' 的权限设置: ');
+        const subSplit3 = subDetails.indexOf(' 比分/信息: ');
+        let diffText = '';
+        if (subSplit !== -1) diffText = subDetails.substring(subSplit + 8);
+        else if (subSplit2 !== -1) diffText = subDetails.substring(subSplit2 + 10);
+        else if (subSplit3 !== -1) diffText = subDetails.substring(subSplit3 + 11);
+
+        if (diffText) {
+          diffText.split(', ').forEach(pair => {
+            const attrName = pair.split(':')[0].trim();
+            if (attrName && !allAttrs.includes(attrName)) {
+              allAttrs.push(attrName);
+            }
+          });
+        }
+      });
+
+      const attrsSuffix = allAttrs.length > 0 ? ` (修改了: ${allAttrs.join(', ')})` : '';
+
       return (
-        <div>
-          <span style={{ fontWeight: 500, color: '#2d3748' }}>{details}</span>
-          <button
-            onClick={() => toggleExpand(log.id)}
-            className="text-btn"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#3182ce',
-              cursor: 'pointer',
-              padding: '0 6px',
-              fontSize: '12px',
-              fontWeight: 500,
-              textDecoration: 'underline'
-            }}
-          >
-            {isExpanded ? '收起明细 ▴' : '展开合并的全部明细 ▾'}
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div>
+            <span style={{ fontWeight: 500, color: '#2d3748' }}>{details}{attrsSuffix}</span>
+            <button
+              onClick={() => toggleExpand(log.id)}
+              className="text-btn"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#3182ce',
+                cursor: 'pointer',
+                padding: '0 6px',
+                fontSize: '12px',
+                fontWeight: 500,
+                textDecoration: 'underline'
+              }}
+            >
+              {isExpanded ? '收起明细 ▴' : '展开合并的全部明细 ▾'}
+            </button>
+          </div>
           {isExpanded && (
-            <div style={{ marginTop: '6px', padding: '8px 12px', background: '#f7fafc', borderRadius: '6px', borderLeft: '3px solid #3182ce', fontSize: '13px', color: '#4a5568', lineHeight: '1.5' }}>
+            <div style={{ marginTop: '4px', padding: '8px 12px', background: '#f7fafc', borderRadius: '6px', borderLeft: '3px solid #3182ce', fontSize: '13px', color: '#4a5568', lineHeight: '1.5' }}>
               {log.subLogs.map((sub, idx) => {
                 const subDetails = sub.details || '';
                 const subSplit = subDetails.indexOf(' 的信息: ');
@@ -180,31 +206,15 @@ const AuditLogPage: React.FC = () => {
     }
     
     return (
-      <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <span style={{ fontWeight: 500, color: '#2d3748' }}>{summary}</span>
-        <button
-          onClick={() => toggleExpand(log.id)}
-          className="text-btn"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#3182ce',
-            cursor: 'pointer',
-            padding: '0 6px',
-            fontSize: '12px',
-            fontWeight: 500,
-            textDecoration: 'underline'
-          }}
-        >
-          {isExpanded ? '收起详情 ▴' : '展开修改差异 ▾'}
-        </button>
-        {isExpanded && (
-          <div style={{ marginTop: '6px', padding: '8px 12px', background: '#f7fafc', borderRadius: '6px', borderLeft: '3px solid #ed8936', fontSize: '13px', color: '#4a5568', lineHeight: '1.5' }}>
-            {diff.split(', ').map((item, idx) => (
-              <div key={idx} style={{ margin: '2px 0' }}>• {item}</div>
-            ))}
-          </div>
-        )}
+        <div style={{ fontSize: '12px', color: '#718096', paddingLeft: '8px', borderLeft: '2px solid #e2e8f0', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {diff.split(', ').map((item, idx) => (
+            <span key={idx} style={{ display: 'inline-block' }}>
+              🔹 {item}
+            </span>
+          ))}
+        </div>
       </div>
     );
   };
