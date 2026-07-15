@@ -150,22 +150,36 @@ const TeamViewEditPage: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!editData) return;
 
-    // 校验球员名单格式是否完整
+    // 校验球员名单格式是否完整及是否有重复
     if (editData.players) {
+      const studentIds = new Set<string>();
+      const jerseyNumbers = new Set<string>();
       for (let i = 0; i < editData.players.length; i++) {
         const p = editData.players[i];
         if (!p.name.trim()) {
           setError(`第 ${i + 1} 个球员的姓名不能为空`);
           return;
         }
-        if (!p.studentId.trim()) {
+        const sId = p.studentId.trim();
+        const jNum = p.jerseyNumber.trim();
+        if (!sId) {
           setError(`第 ${i + 1} 个球员的学号不能为空`);
           return;
         }
-        if (!p.jerseyNumber.trim()) {
+        if (!jNum) {
           setError(`第 ${i + 1} 个球员的球衣号码不能为空`);
           return;
         }
+        if (studentIds.has(sId)) {
+          setError(`球员列表中存在重复的学号: ${sId}`);
+          return;
+        }
+        if (jerseyNumbers.has(jNum)) {
+          setError(`球员列表中存在重复的球衣号码: ${jNum}`);
+          return;
+        }
+        studentIds.add(sId);
+        jerseyNumbers.add(jNum);
       }
     }
 
@@ -373,13 +387,41 @@ const TeamViewEditPage: React.FC = () => {
 
   const handleExcelImport = (importedPlayers: Omit<Player, 'id'>[]) => {
     if (editData) {
-      const newPlayers = importedPlayers.map((p) => ({
-        ...p,
-        id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-        teamId: editData.id,
-      }));
-      setEditData({ ...editData, players: [...(editData.players || []), ...newPlayers] });
+      const mergedPlayers = editData.players ? [...editData.players] : [];
+      let studentIdDupCount = 0;
+      let jerseyNumDupCount = 0;
+
+      for (const p of importedPlayers) {
+        const sId = String(p.studentId).trim();
+        const jNum = String(p.jerseyNumber).trim();
+        if (mergedPlayers.some((mp) => mp.studentId === sId)) {
+          studentIdDupCount++;
+          continue;
+        }
+        if (mergedPlayers.some((mp) => mp.jerseyNumber === jNum)) {
+          jerseyNumDupCount++;
+          continue;
+        }
+        mergedPlayers.push({
+          ...p,
+          studentId: sId,
+          jerseyNumber: jNum,
+          id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+          teamId: editData.id,
+        });
+      }
+
+      setEditData({ ...editData, players: mergedPlayers });
       setShowImporter(false);
+
+      if (studentIdDupCount > 0 || jerseyNumDupCount > 0) {
+        let msg = `成功导入 ${importedPlayers.length - studentIdDupCount - jerseyNumDupCount} 名球员。`;
+        if (studentIdDupCount > 0) msg += `跳过了 ${studentIdDupCount} 名学号重复的球员。`;
+        if (jerseyNumDupCount > 0) msg += `跳过了 ${jerseyNumDupCount} 名球衣号码重复的球员。`;
+        alert(msg);
+      } else {
+        alert(`成功导入 ${importedPlayers.length} 名球员`);
+      }
     }
   };
 

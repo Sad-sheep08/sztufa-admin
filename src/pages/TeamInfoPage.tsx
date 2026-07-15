@@ -34,7 +34,17 @@ const TeamInfoPage: React.FC = () => {
   const [saveProgress, setSaveProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
   const handleAddPlayer = (player: Omit<Player, 'id'>) => {
-    setPlayers((prev) => [...prev, { ...player, id: generateId() }]);
+    const sId = String(player.studentId).trim();
+    const jNum = String(player.jerseyNumber).trim();
+    if (players.some((p) => p.studentId === sId)) {
+      setError(`已存在学号为 ${sId} 的球员`);
+      return;
+    }
+    if (players.some((p) => p.jerseyNumber === jNum)) {
+      setError(`球衣号码 ${jNum} 在本队中已被占用`);
+      return;
+    }
+    setPlayers((prev) => [...prev, { ...player, studentId: sId, jerseyNumber: jNum, id: generateId() }]);
     setError(null);
   };
 
@@ -51,9 +61,40 @@ const TeamInfoPage: React.FC = () => {
   };
 
   const handleImportPlayers = (importedPlayers: Omit<Player, 'id'>[]) => {
-    const newPlayers = importedPlayers.map((p) => ({ ...p, id: generateId() }));
-    setPlayers((prev) => [...prev, ...newPlayers]);
+    const mergedPlayers = [...players];
+    let studentIdDupCount = 0;
+    let jerseyNumDupCount = 0;
+
+    for (const p of importedPlayers) {
+      const sId = String(p.studentId).trim();
+      const jNum = String(p.jerseyNumber).trim();
+      if (mergedPlayers.some((mp) => mp.studentId === sId)) {
+        studentIdDupCount++;
+        continue;
+      }
+      if (mergedPlayers.some((mp) => mp.jerseyNumber === jNum)) {
+        jerseyNumDupCount++;
+        continue;
+      }
+      mergedPlayers.push({
+        ...p,
+        studentId: sId,
+        jerseyNumber: jNum,
+        id: generateId()
+      });
+    }
+
+    setPlayers(mergedPlayers);
     setError(null);
+
+    if (studentIdDupCount > 0 || jerseyNumDupCount > 0) {
+      let msg = `成功导入 ${importedPlayers.length - studentIdDupCount - jerseyNumDupCount} 名球员。`;
+      if (studentIdDupCount > 0) msg += `跳过了 ${studentIdDupCount} 名学号重复的球员。`;
+      if (jerseyNumDupCount > 0) msg += `跳过了 ${jerseyNumDupCount} 名球衣号码重复的球员。`;
+      alert(msg);
+    } else {
+      alert(`成功导入 ${importedPlayers.length} 名球员`);
+    }
   };
 
   const validatePhone = (phone: string): boolean => {
@@ -102,6 +143,39 @@ const TeamInfoPage: React.FC = () => {
       setError('请输入客队球衣颜色');
       return false;
     }
+    
+    if (players.length > 0) {
+      const studentIds = new Set<string>();
+      const jerseyNumbers = new Set<string>();
+      for (let i = 0; i < players.length; i++) {
+        const p = players[i];
+        if (!p.name.trim()) {
+          setError(`第 ${i + 1} 个球员的姓名不能为空`);
+          return false;
+        }
+        const sId = p.studentId.trim();
+        const jNum = p.jerseyNumber.trim();
+        if (!sId) {
+          setError(`第 ${i + 1} 个球员的学号不能为空`);
+          return false;
+        }
+        if (!jNum) {
+          setError(`第 ${i + 1} 个球员的球衣号码不能为空`);
+          return false;
+        }
+        if (studentIds.has(sId)) {
+          setError(`球员列表中存在重复的学号: ${sId}`);
+          return false;
+        }
+        if (jerseyNumbers.has(jNum)) {
+          setError(`球员列表中存在重复的球衣号码: ${jNum}`);
+          return false;
+        }
+        studentIds.add(sId);
+        jerseyNumbers.add(jNum);
+      }
+    }
+    
     return true;
   };
 
