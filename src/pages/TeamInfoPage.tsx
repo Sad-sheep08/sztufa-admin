@@ -204,18 +204,24 @@ const TeamInfoPage: React.FC = () => {
         const uploadRes = await uploadApi.upload(teamFormData.teamLogo);
         if (uploadRes.data && uploadRes.data.url) {
           teamLogoUrl = uploadRes.data.url;
+        } else {
+          throw new Error('队徽上传失败，服务器未返回图片存储路径');
         }
       }
       if (teamFormData.homeJersey) {
         const uploadRes = await uploadApi.upload(teamFormData.homeJersey);
         if (uploadRes.data && uploadRes.data.url) {
           homeJerseyUrl = uploadRes.data.url;
+        } else {
+          throw new Error('主场球衣上传失败，服务器未返回图片存储路径');
         }
       }
       if (teamFormData.awayJersey) {
         const uploadRes = await uploadApi.upload(teamFormData.awayJersey);
         if (uploadRes.data && uploadRes.data.url) {
           awayJerseyUrl = uploadRes.data.url;
+        } else {
+          throw new Error('客场球衣上传失败，服务器未返回图片存储路径');
         }
       }
 
@@ -241,6 +247,9 @@ const TeamInfoPage: React.FC = () => {
       // 第三步：创建球队
       const savedTeamData = await teamApi.create(teamDTO);
       const teamId = savedTeamData.id;
+      if (!teamId) {
+        throw new Error('服务器保存球队信息失败，未返回有效的球队ID');
+      }
       currentStep++;
 
       console.log('球队创建成功，球队ID:', teamId);
@@ -259,7 +268,7 @@ const TeamInfoPage: React.FC = () => {
             studentId: player.studentId,
             jerseyNumber: player.jerseyNumber,
             photo: player.photo,
-            teamId: teamId || '',
+            teamId: teamId,
           };
 
           console.log('正在创建球员:', playerDTO);
@@ -271,7 +280,7 @@ const TeamInfoPage: React.FC = () => {
             studentId: savedPlayerData.studentId,
             jerseyNumber: savedPlayerData.jerseyNumber,
             photo: savedPlayerData.photo || null,
-            teamId: savedPlayerData.teamId || '',
+            teamId: savedPlayerData.teamId || teamId,
           });
           currentStep++;
         }
@@ -297,7 +306,7 @@ const TeamInfoPage: React.FC = () => {
 
       // 第五步：构建完整的球队对象
       const team: Team = {
-        id: teamId || generateId(),
+        id: teamId,
         teamName: savedTeamData.teamName,
         teamDoctor: savedTeamData.teamDoctor,
         headCoach: savedTeamData.headCoach,

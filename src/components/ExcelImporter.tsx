@@ -33,7 +33,12 @@ const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImport }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const result = e.target?.result;
+        if (!(result instanceof ArrayBuffer)) {
+          setError('读取 Excel 文件内容失败，解析数据出错');
+          return;
+        }
+        const data = new Uint8Array(result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];

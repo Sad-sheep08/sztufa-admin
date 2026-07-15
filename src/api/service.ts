@@ -42,27 +42,57 @@ const createHeaders = (multipart = false): Headers => {
 };
 
 const handleResponse = async <T>(response: Response): Promise<T> => {
-  if (response.status === 401) {
+  const isOk = response.ok;
+  const status = response.status;
+
+  if (status === 401) {
     handleAuthError(response);
   }
   
+  let responseText = '';
   try {
-    const data = await response.json();
-    
-    if (!response.ok) {
+    responseText = await response.text();
+  } catch (textErr) {
+    throw new Error(`无法读取服务器响应: ${status}`);
+  }
+
+  let data: any = null;
+  let isJson = false;
+  try {
+    data = JSON.parse(responseText);
+    isJson = true;
+  } catch (jsonErr) {
+    // 不是 JSON 响应（可能是 HTML，例如 502 Bad Gateway）
+  }
+
+  if (!isOk) {
+    if (isJson && data) {
       const errorMessage = Array.isArray(data.message) 
         ? data.message.join(', ') 
-        : (data.message || (response.status === 401 ? 'Unauthorized' : '请求失败'));
+        : (data.message || (status === 401 ? '登录状态失效，请重新登录' : '请求失败'));
       throw new Error(errorMessage);
+    } else {
+      if (status === 502 || status === 504) {
+        throw new Error('服务器网关或代理超时异常 (502/504)，请稍后再试');
+      }
+      if (status === 500) {
+        throw new Error('服务器内部逻辑发生错误 (500)，请联系系统管理员');
+      }
+      if (status === 403) {
+        throw new Error('您无权执行此操作 (403)');
+      }
+      if (status === 404) {
+        throw new Error('请求的接口资源未找到 (404)');
+      }
+      throw new Error(`服务器响应失败，状态码: ${status}`);
     }
-    
-    return data as T;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('网络请求异常');
   }
+
+  if (!isJson) {
+    throw new Error('服务器返回的响应格式不正确，期望 JSON 数据');
+  }
+
+  return data as T;
 };
 
 export const teamApi = {

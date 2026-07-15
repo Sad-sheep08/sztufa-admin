@@ -49,7 +49,7 @@ export interface PlayerFormData {
   name: string;
   studentId: string;
   jerseyNumber: string;
-  photo: File | null;
+  photo: File | string | null;
   teamId: string;
 }
 

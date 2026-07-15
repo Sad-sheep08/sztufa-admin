@@ -25,17 +25,23 @@ const PlayerList: React.FC<PlayerListProps> = ({
     teamId: '',
   });
   const [preview, setPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = async (file: File | null) => {
     if (file) {
+      setIsUploading(true);
       try {
         const response = await uploadApi.upload(file);
         if (response.data && response.data.url) {
           setPreview(response.data.url);
-          setNewPlayer((prev) => ({ ...prev, photo: file }));
+          setNewPlayer((prev) => ({ ...prev, photo: response.data.url }));
+        } else {
+          alert('图片上传失败，服务器未返回存储地址');
         }
       } catch (err) {
         alert('图片上传失败');
+      } finally {
+        setIsUploading(false);
       }
     } else {
       setPreview(null);
@@ -44,12 +50,16 @@ const PlayerList: React.FC<PlayerListProps> = ({
   };
 
   const handleAddPlayer = () => {
+    if (isUploading) {
+      alert('请等待照片上传完毕再确认添加');
+      return;
+    }
     if (newPlayer.name && newPlayer.studentId && newPlayer.jerseyNumber) {
       onAddPlayer({
         name: newPlayer.name,
         studentId: newPlayer.studentId,
         jerseyNumber: newPlayer.jerseyNumber,
-        photo: preview,
+        photo: typeof newPlayer.photo === 'string' ? newPlayer.photo : preview,
         teamId: '',
       });
       setNewPlayer({ name: '', studentId: '', jerseyNumber: '', photo: null, teamId: '' });

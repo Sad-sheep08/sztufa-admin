@@ -3,8 +3,8 @@ import { Users, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle, Plus, D
 import * as XLSX from 'xlsx';
 import ExcelImporter from '../components/ExcelImporter';
 import { teamApi, playerApi, matchApi, seasonApi } from '../api/service';
-import { TeamDTO, PlayerDTO } from '../api/types';
-import { Team, Player } from '../types';
+import { TeamDTO, PlayerDTO, MatchDTO } from '../api/types';
+import { Team, Player, Match } from '../types';
 import { generateId } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -20,7 +20,7 @@ const TeamViewEditPage: React.FC = () => {
 
   const [editData, setEditData] = useState<Team | null>(null);
   const [showImporter, setShowImporter] = useState(false);
-  const [allMatches, setAllMatches] = useState<any[]>([]);
+  const [allMatches, setAllMatches] = useState<MatchDTO[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
   const [activeSeasonName, setActiveSeasonName] = useState<string>('');
 
@@ -51,7 +51,7 @@ const TeamViewEditPage: React.FC = () => {
     // 找出所有与该球队相关的已结束比赛，按时间升序（从旧到新）
     const teamMatches = allMatches
       .filter(m => (m.homeTeamId === teamId || m.awayTeamId === teamId) && m.status === 'finished')
-      .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+      .sort((a, b) => new Date(a.matchDate || '').getTime() - new Date(b.matchDate || '').getTime());
 
     // 零封场次统计
     let cleanSheets = 0;
@@ -81,7 +81,7 @@ const TeamViewEditPage: React.FC = () => {
   const loadTeams = async () => {
     setIsLoading(true);
     try {
-      const response = await teamApi.getAll();
+      const response = await teamApi.getAll(1, 200);
       const teamList: Team[] = response.data.map((t: TeamDTO) => ({
         id: t.id || generateId(),
         teamName: t.teamName,
@@ -147,8 +147,55 @@ const TeamViewEditPage: React.FC = () => {
     setIsSaved(false);
   };
 
+  const validatePhone = (phone: string): boolean => {
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    return phoneRegex.test(phone);
+  };
+
   const handleSaveEdit = async () => {
     if (!editData) return;
+
+    // 校验球队基本信息
+    if (!editData.teamName?.trim()) {
+      setError('请输入队伍名称');
+      return;
+    }
+    if (!editData.headCoach?.trim()) {
+      setError('请输入主教练姓名');
+      return;
+    }
+    if (!editData.teamLeader?.trim()) {
+      setError('请输入领队姓名');
+      return;
+    }
+    if (!editData.teamDoctor?.trim()) {
+      setError('请输入队医姓名');
+      return;
+    }
+    if (!editData.coachPhone?.trim()) {
+      setError('请输入主教练联系方式');
+      return;
+    }
+    if (!validatePhone(editData.coachPhone || '')) {
+      setError('主教练联系方式格式不正确，请输入11位手机号');
+      return;
+    }
+    if (!editData.leaderPhone?.trim()) {
+      setError('请输入领队联系方式');
+      return;
+    }
+    if (!validatePhone(editData.leaderPhone || '')) {
+      setError('领队联系方式格式不正确，请输入11位手机号');
+      return;
+    }
+    if (!editData.homeJerseyColor?.trim()) {
+      setError('请输入主队球衣颜色');
+      return;
+    }
+    if (!editData.awayJerseyColor?.trim()) {
+      setError('请输入客队球衣颜色');
+      return;
+    }
 
     // 校验球员名单格式是否完整及是否有重复
     if (editData.players) {
@@ -336,6 +383,7 @@ const TeamViewEditPage: React.FC = () => {
         setSelectedTeam(null);
         setEditData(null);
       }
+      setError('球队已成功删除');
     } catch (err) {
       console.error('删除球队失败:', err);
       setError('网络连接失败，请稍后重试');
@@ -406,7 +454,7 @@ const TeamViewEditPage: React.FC = () => {
           ...p,
           studentId: sId,
           jerseyNumber: jNum,
-          id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+          id: generateId(),
           teamId: editData.id,
         });
       }
@@ -414,14 +462,10 @@ const TeamViewEditPage: React.FC = () => {
       setEditData({ ...editData, players: mergedPlayers });
       setShowImporter(false);
 
-      if (studentIdDupCount > 0 || jerseyNumDupCount > 0) {
-        let msg = `成功导入 ${importedPlayers.length - studentIdDupCount - jerseyNumDupCount} 名球员。`;
-        if (studentIdDupCount > 0) msg += `跳过了 ${studentIdDupCount} 名学号重复的球员。`;
-        if (jerseyNumDupCount > 0) msg += `跳过了 ${jerseyNumDupCount} 名球衣号码重复的球员。`;
-        alert(msg);
-      } else {
-        alert(`成功导入 ${importedPlayers.length} 名球员`);
-      }
+      let msg = `成功导入 ${importedPlayers.length - studentIdDupCount - jerseyNumDupCount} 名球员。`;
+      if (studentIdDupCount > 0) msg += `跳过了 ${studentIdDupCount} 名学号重复的球员。`;
+      if (jerseyNumDupCount > 0) msg += `跳过了 ${jerseyNumDupCount} 名球衣号码重复的球员。`;
+      setError(msg);
     }
   };
 
