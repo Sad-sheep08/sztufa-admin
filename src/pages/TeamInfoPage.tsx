@@ -107,6 +107,10 @@ const TeamInfoPage: React.FC = () => {
       setError('请输入队伍名称');
       return false;
     }
+    if (teamFormData.teamName.trim().length > 100) {
+      setError('球队名称长度不能超过100个字符');
+      return false;
+    }
     if (!teamFormData.headCoach.trim()) {
       setError('请输入主教练姓名');
       return false;
@@ -154,7 +158,7 @@ const TeamInfoPage: React.FC = () => {
           return false;
         }
         const sId = p.studentId.trim();
-        const jNum = p.jerseyNumber.trim();
+        const jNum = String(p.jerseyNumber || '').trim();
         if (!sId) {
           setError(`第 ${i + 1} 个球员的学号不能为空`);
           return false;

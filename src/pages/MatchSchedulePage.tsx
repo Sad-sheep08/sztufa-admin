@@ -160,6 +160,10 @@ const TeamViewEditPage: React.FC = () => {
       setError('请输入队伍名称');
       return;
     }
+    if (editData.teamName.trim().length > 100) {
+      setError('球队名称长度不能超过100个字符');
+      return;
+    }
     if (!editData.headCoach?.trim()) {
       setError('请输入主教练姓名');
       return;
@@ -208,7 +212,7 @@ const TeamViewEditPage: React.FC = () => {
           return;
         }
         const sId = p.studentId.trim();
-        const jNum = p.jerseyNumber.trim();
+        const jNum = String(p.jerseyNumber || '').trim();
         if (!sId) {
           setError(`第 ${i + 1} 个球员的学号不能为空`);
           return;
@@ -608,6 +612,7 @@ const TeamViewEditPage: React.FC = () => {
                     value={editData?.teamName || ''}
                     onChange={(e) => handleFieldChange('teamName', e.target.value)}
                     className="form-input"
+                    maxLength={100}
                     disabled={user?.role !== 'super_admin'}
                     title={user?.role !== 'super_admin' ? '仅超级管理员可修改球队名称' : ''}
                   />

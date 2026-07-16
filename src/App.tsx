@@ -146,6 +146,22 @@ const RoleGuardRoute: React.FC<{ allowedRoles: string[]; children: React.ReactNo
   return <>{children}</>;
 };
 
+const HomeRedirect: React.FC = () => {
+  const { user } = useAuth();
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user.role === 'super_admin') {
+    return <TeamInfoPage />;
+  }
+  if (user.role === 'match_scorer') {
+    return <Navigate to="/teams" replace />;
+  }
+  return <Navigate to="/schedule" replace />;
+};
+
 const AppContent: React.FC = () => {
   return (
     <Router>
@@ -165,7 +181,7 @@ const AppContent: React.FC = () => {
             <div className="app">
               <Navigation />
               <Routes>
-                 <Route path="/" element={<RoleGuardRoute allowedRoles={['super_admin']}><TeamInfoPage /></RoleGuardRoute>} />
+                 <Route path="/" element={<HomeRedirect />} />
                  <Route path="/teams" element={<RoleGuardRoute allowedRoles={['super_admin', 'match_scorer']}><TeamManagementPage /></RoleGuardRoute>} />
                  <Route path="/schedule" element={<MatchSchedulePage />} />
                  <Route path="/statistics" element={<RoleGuardRoute allowedRoles={['super_admin', 'match_scorer']}><ScoreStatisticsPage /></RoleGuardRoute>} />

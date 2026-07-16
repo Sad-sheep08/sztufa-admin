@@ -383,6 +383,7 @@ const MatchViewEditPage: React.FC = () => {
         awayScore: editData.awayScore,
         matchDate: formattedMatchDate,
         location: editData.location,
+        status: editData.status,
         goals: goals,
         events: events,
         mvpPlayerId: editData.mvpPlayerId || null,
@@ -486,6 +487,10 @@ const MatchViewEditPage: React.FC = () => {
   };
 
   const getMatchStatus = (match: Match) => {
+    if (match.status === 'scheduled') return { text: '未开始', color: 'warning' };
+    if (match.status === 'ongoing') return { text: '进行中', color: 'info' };
+    if (match.status === 'finished') return { text: '已结束', color: 'success' };
+    
     const now = new Date();
     const matchTime = new Date(match.matchTime);
     if (matchTime > now) return { text: '未开始', color: 'warning' };
@@ -742,6 +747,26 @@ const MatchViewEditPage: React.FC = () => {
                 ) : (
                   <div className="form-value" style={{ fontWeight: 'bold', color: '#f57c00' }}>
                     🏆 {selectedMatch.mvpPlayerName || '未评选'}
+                  </div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>比赛状态</label>
+                {isEditing ? (
+                  <select
+                    value={editData?.status || 'scheduled'}
+                    onChange={(e) => handleFieldChange('status', e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="scheduled">即将开始</option>
+                    <option value="ongoing">进行中</option>
+                    <option value="finished">已结束</option>
+                  </select>
+                ) : (
+                  <div className="form-value">
+                    {selectedMatch.status === 'scheduled' && '即将开始'}
+                    {selectedMatch.status === 'ongoing' && '进行中'}
+                    {selectedMatch.status === 'finished' && '已结束'}
                   </div>
                 )}
               </div>

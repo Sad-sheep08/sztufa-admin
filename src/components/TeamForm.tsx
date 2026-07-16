@@ -79,6 +79,7 @@ const TeamForm: React.FC<TeamFormProps> = ({ data, onChange }) => {
             value={data.teamName}
             onChange={(e) => handleFieldChange('teamName', e.target.value)}
             placeholder="请输入队伍名称"
+            maxLength={100}
             required
           />
         </div>

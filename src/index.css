@@ -587,6 +587,11 @@ body {
   color: #856404;
 }
 
+.status-badge.info {
+  background: #cce5ff;
+  color: #004085;
+}
+
 .team-name-cell {
   font-weight: 500;
 }

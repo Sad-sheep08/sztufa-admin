@@ -54,10 +54,10 @@ const PlayerList: React.FC<PlayerListProps> = ({
       alert('请等待照片上传完毕再确认添加');
       return;
     }
-    if (newPlayer.name && newPlayer.studentId && newPlayer.jerseyNumber) {
+    if (newPlayer.name.trim() && newPlayer.studentId.trim() && newPlayer.jerseyNumber !== '') {
       onAddPlayer({
-        name: newPlayer.name,
-        studentId: newPlayer.studentId,
+        name: newPlayer.name.trim(),
+        studentId: newPlayer.studentId.trim(),
         jerseyNumber: newPlayer.jerseyNumber,
         photo: typeof newPlayer.photo === 'string' ? newPlayer.photo : preview,
         teamId: '',

@@ -20,6 +20,7 @@ const TeamManagementPage: React.FC = () => {
     awayTeamId: '',
     matchDate: '',
     location: '',
+    status: 'finished',
   });
 
   const [isSaved, setIsSaved] = useState(false);
@@ -376,7 +377,7 @@ const TeamManagementPage: React.FC = () => {
         awayScore: parseInt(formData.awayTeamScore) || 0,
         matchDate: matchDate,
         location: formData.location,
-        status: 'finished',
+        status: (formData.status as any) || 'finished',
         goals: goals,
         events: events,
         lineups: lineups.map(l => ({
@@ -545,6 +546,21 @@ const TeamManagementPage: React.FC = () => {
                   {formData.location && !['五人场', '北区', '南区'].includes(formData.location) && (
                     <option value={formData.location}>{formData.location}</option>
                   )}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>比赛状态</label>
+                <select
+                  name="status"
+                  value={formData.status || 'finished'}
+                  onChange={handleChange}
+                  className="form-input"
+                  required
+                >
+                  <option value="scheduled">即将开始</option>
+                  <option value="ongoing">进行中</option>
+                  <option value="finished">已结束</option>
                 </select>
               </div>
             </div>
