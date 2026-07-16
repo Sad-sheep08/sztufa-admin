@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Trophy, Calendar, BarChart3, Users, LogOut, ShieldAlert, Database, Menu, X } from 'lucide-react';
+import { Trophy, Calendar, BarChart3, Users, LogOut, ShieldAlert, Database, Menu, X, FileText } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import TeamInfoPage from './pages/TeamInfoPage';
 import MatchSchedulePage from './pages/MatchSchedulePage';
@@ -10,12 +10,14 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AuditLogPage from './pages/AuditLogPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
+import NewsManagementPage from './pages/NewsManagementPage';
 
 const navItems = [
   { path: '/', label: '球队信息录入', icon: Trophy },
   { path: '/teams', label: '比赛信息录入', icon: Calendar },
   { path: '/schedule', label: '球队信息管理', icon: Users },
   { path: '/statistics', label: '比赛信息管理', icon: BarChart3 },
+  { path: '/news', label: '活动资讯管理', icon: FileText },
   { path: '/audit-logs', label: '操作审计日志', icon: ShieldAlert },
   { path: '/settings', label: '数据安全备份', icon: Database },
 ];
@@ -70,7 +72,7 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return true;
     }
     if (user.role === 'match_scorer') {
-      return item.path === '/teams' || item.path === '/statistics';
+      return item.path === '/teams' || item.path === '/statistics' || item.path === '/news';
     }
     if (user.role === 'coach') {
       return item.path === '/schedule';
@@ -185,6 +187,7 @@ const AppContent: React.FC = () => {
                  <Route path="/teams" element={<RoleGuardRoute allowedRoles={['super_admin', 'match_scorer']}><TeamManagementPage /></RoleGuardRoute>} />
                  <Route path="/schedule" element={<MatchSchedulePage />} />
                  <Route path="/statistics" element={<RoleGuardRoute allowedRoles={['super_admin', 'match_scorer']}><ScoreStatisticsPage /></RoleGuardRoute>} />
+                 <Route path="/news" element={<RoleGuardRoute allowedRoles={['super_admin', 'match_scorer']}><NewsManagementPage /></RoleGuardRoute>} />
                  <Route path="/audit-logs" element={<RoleGuardRoute allowedRoles={['super_admin']}><AuditLogPage /></RoleGuardRoute>} />
                  <Route path="/settings" element={<RoleGuardRoute allowedRoles={['super_admin']}><SystemSettingsPage /></RoleGuardRoute>} />
               </Routes>
