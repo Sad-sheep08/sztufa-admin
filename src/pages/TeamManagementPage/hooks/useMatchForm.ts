@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Goal, MatchFormData, Match, MatchEvent } from '../../../types';
 import { generateId } from '../../../utils';
 import { matchApi, teamApi, seasonApi } from '../../../api/service';
-import { MatchDTO, TeamDTO, PlayerDTO } from '../../../api/types';
+import { TeamDTO, PlayerDTO } from '../../../api/types';
+import { buildMatchDto, MatchLineup, validateMatchForm } from '../utils/matchForm';
 
 export const useMatchForm = () => {
   const [formData, setFormData] = useState<MatchFormData>({
@@ -39,7 +40,7 @@ export const useMatchForm = () => {
   const [availableTeams, setAvailableTeams] = useState<TeamDTO[]>([]);
   const [homeTeamPlayers, setHomeTeamPlayers] = useState<PlayerDTO[]>([]);
   const [awayTeamPlayers, setAwayTeamPlayers] = useState<PlayerDTO[]>([]);
-  const [lineups, setLineups] = useState<{ playerId: string; teamType: 'home' | 'away'; lineupType: 'starting' | 'substitute' }[]>([]);
+  const [lineups, setLineups] = useState<MatchLineup[]>([]);
 
   const handleLineupChange = (playerId: string, teamType: 'home' | 'away', lineupType: 'starting' | 'substitute' | 'none') => {
     let updatedLineups = [...lineups];
@@ -250,133 +251,13 @@ export const useMatchForm = () => {
     }
   };
 
-  const validateForm = (): boolean => {
-    if (!formData.matchName.trim()) {
-      setError('请选择比赛名称');
-      return false;
-    }
-    if (!formData.matchTime.trim()) {
-      setError('请选择比赛时间');
-      return false;
-    }
-    if (!formData.homeTeamName.trim()) {
-      setError('请输入主队名称');
-      return false;
-    }
-    if (!formData.awayTeamName.trim()) {
-      setError('请输入客队名称');
-      return false;
-    }
-    if (formData.homeTeamName === formData.awayTeamName) {
-      setError('主队和客队不能相同');
-      return false;
-    }
-    if (!formData.location.trim()) {
-      setError('请输入比赛地点');
-      return false;
-    }
-    if (!formData.homeTeamScore.trim()) {
-      setError('请输入主队得分');
-      return false;
-    }
-    if (!formData.awayTeamScore.trim()) {
-      setError('请输入客队得分');
-      return false;
-    }
-
-    const homeScore = parseInt(formData.homeTeamScore);
-    const awayScore = parseInt(formData.awayTeamScore);
-
-    if (isNaN(homeScore) || homeScore < 0) {
-      setError('主队得分必须是非负整数');
-      return false;
-    }
-    if (isNaN(awayScore) || awayScore < 0) {
-      setError('客队得分必须是非负整数');
-      return false;
-    }
-
-    // 主队总得分 = 主队普通进球 + 主队点球 + 客队乌龙球
-    const homeGoalsCount = formData.events.filter(e => e.teamType === 'home' && (e.eventType === 'goal' || e.eventType === 'penalty')).length +
-                           formData.events.filter(e => e.teamType === 'away' && e.eventType === 'own_goal').length;
-    // 客队总得分 = 客队普通进球 + 客队点球 + 主队乌龙球
-    const awayGoalsCount = formData.events.filter(e => e.teamType === 'away' && (e.eventType === 'goal' || e.eventType === 'penalty')).length +
-                           formData.events.filter(e => e.teamType === 'home' && e.eventType === 'own_goal').length;
-
-    if (homeScore !== homeGoalsCount) {
-      setError(`主队进球/点球/对方乌龙数(${homeGoalsCount})与主队得分(${homeScore})不一致`);
-      return false;
-    }
-    if (awayScore !== awayGoalsCount) {
-      setError(`客队进球/点球/对方乌龙数(${awayGoalsCount})与客队得分(${awayScore})不一致`);
-      return false;
-    }
-
-    if (formData.events) {
-      for (const event of formData.events) {
-        if (!event.eventTime.trim()) {
-          setError('请填写所有事件的时间');
-          return false;
-        }
-        if (event.eventType === 'substitution') {
-          if (!event.playerId) {
-            setError('请选择换人事件的换上球员');
-            return false;
-          }
-          if (!event.subPlayerId) {
-            setError('请选择换人事件的换下球员');
-            return false;
-          }
-          if (event.playerId === event.subPlayerId) {
-            setError('换上球员与换下球员不能相同');
-            return false;
-          }
-        } else {
-          if (!event.playerId) {
-            setError('请选择事件关联的球员');
-            return false;
-          }
-        }
-      }
-
-      // 校验换下后不能再换上，以及已换下球员不能再次换下
-      const homeSubbedOff = new Set<string>();
-      const awaySubbedOff = new Set<string>();
-
-      const sortedEvents = [...formData.events].sort((a, b) => {
-        const parseTime = (t: string) => parseInt(t.replace(/'/g, '')) || 0;
-        return parseTime(a.eventTime) - parseTime(b.eventTime);
-      });
-
-      for (const event of sortedEvents) {
-        if (event.eventType === 'substitution') {
-          const subbedOffSet = event.teamType === 'home' ? homeSubbedOff : awaySubbedOff;
-          
-          if (event.playerId && subbedOffSet.has(event.playerId)) {
-            setError(`换人错误：球员 ${event.playerName} 已经被换下过，不能再次换上`);
-            return false;
-          }
-          
-          if (event.subPlayerId && subbedOffSet.has(event.subPlayerId)) {
-            setError(`换人错误：球员 ${event.subPlayerName} 已经被换下过，不能再次换下`);
-            return false;
-          }
-
-          if (event.subPlayerId) {
-            subbedOffSet.add(event.subPlayerId);
-          }
-        }
-      }
-    }
-
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!validateForm()) {
+    const validationError = validateMatchForm(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -405,62 +286,7 @@ export const useMatchForm = () => {
       }
       setIsVerifyingTeams(false);
 
-      const matchDate = new Date(formData.matchTime).toISOString();
-
-      // 映射事件数据
-      const events = formData.events.map(e => ({
-        eventTime: e.eventTime,
-        eventType: e.eventType,
-        description: e.description || (
-          e.eventType === 'substitution'
-            ? `换上 ${e.playerName} (${e.jerseyNumber}号)，换下 ${e.subPlayerName} (${e.subJerseyNumber}号)`
-            : e.eventType === 'own_goal'
-              ? `乌龙球`
-              : e.eventType === 'penalty'
-                ? `点球`
-                : `进球`
-        ),
-        teamType: e.teamType,
-        playerId: e.playerId || null,
-        playerName: e.playerName || null,
-        jerseyNumber: e.jerseyNumber || null,
-        subPlayerId: e.subPlayerId || null,
-        subPlayerName: e.subPlayerName || null,
-        subJerseyNumber: e.subJerseyNumber || null,
-      }));
-
-      // 提取所有进球/点球/乌龙球，同步至 Goal 表以向下兼容
-      const goals = events
-        .filter(e => e.eventType === 'goal' || e.eventType === 'penalty' || e.eventType === 'own_goal')
-        .map(e => ({
-          playerName: e.eventType === 'own_goal' ? `${e.playerName} (乌龙)` : e.eventType === 'penalty' ? `${e.playerName} (点球)` : e.playerName || '',
-          goalTime: e.eventTime,
-          jerseyNumber: e.jerseyNumber || '',
-          teamType: e.eventType === 'own_goal' ? (e.teamType === 'home' ? 'away' : 'home') : e.teamType,
-          playerId: e.playerId || null
-        }));
-
-      const matchDTO: MatchDTO = {
-        homeTeamId: formData.homeTeamId,
-        awayTeamId: formData.awayTeamId,
-        homeScore: parseInt(formData.homeTeamScore) || 0,
-        awayScore: parseInt(formData.awayTeamScore) || 0,
-        matchDate: matchDate,
-        location: formData.location,
-        status: (formData.status as any) || 'finished',
-        goals: goals,
-        events: events,
-        stage: formData.stage || 'LEAGUE',
-        groupName: formData.stage === 'GROUP' ? formData.groupName : undefined,
-        knockoutRound: formData.stage === 'KNOCKOUT' ? formData.knockoutRound : undefined,
-        knockoutMatchIndex: formData.stage === 'KNOCKOUT' ? parseInt(formData.knockoutMatchIndex || '1', 10) : undefined,
-        seasonId: formData.seasonId || undefined,
-        lineups: lineups.map(l => ({
-          playerId: l.playerId,
-          teamType: l.teamType,
-          lineupType: l.lineupType
-        }))
-      };
+      const matchDTO = buildMatchDto(formData, lineups);
 
       console.log('正在提交比赛数据到后端:', matchDTO);
       const response = await matchApi.create(matchDTO);

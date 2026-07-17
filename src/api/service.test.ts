@@ -1,9 +1,37 @@
 import { teamApi, matchApi, playerApi, authApi, importApi, validateResponse } from './service';
 import { ApiResponse, TeamDTO, MatchDTO, PlayerDTO } from './types';
 
+type MockFetchResponse = {
+  ok: boolean;
+  status?: number;
+  json?: jest.Mock;
+  text?: jest.Mock;
+};
+
+const normalizeMockResponse = async (response: MockFetchResponse): Promise<Response> => {
+  const status = response.status ?? (response.ok ? 200 : 400);
+  const body = response.json ? await response.json() : null;
+
+  return {
+    ...response,
+    status,
+    text: response.text ?? jest.fn().mockResolvedValue(JSON.stringify(body)),
+  } as unknown as Response;
+};
+
+const createFetchMock = (): jest.Mock => {
+  const fetchMock = jest.fn();
+  const mockResolvedValueOnce = fetchMock.mockResolvedValueOnce.bind(fetchMock);
+
+  fetchMock.mockResolvedValueOnce = (response: MockFetchResponse) =>
+    mockResolvedValueOnce(normalizeMockResponse(response));
+
+  return fetchMock;
+};
+
 describe('API Service Tests', () => {
   beforeEach(() => {
-    global.fetch = jest.fn();
+    global.fetch = createFetchMock();
     global.localStorage = {
       getItem: jest.fn().mockReturnValue(null),
       setItem: jest.fn(),
