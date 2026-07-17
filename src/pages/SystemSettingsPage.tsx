@@ -384,6 +384,84 @@ const SystemSettingsPage: React.FC = () => {
 
   return (
     <div className="team-info-page">
+      <style>{`
+        .season-card {
+          background: #fff;
+          border: 1px solid #e9ecef;
+          padding: 24px;
+          border-radius: 12px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+        .season-form {
+          display: flex;
+          gap: 15px;
+          align-items: flex-end;
+        }
+        .season-input-field {
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid #ced4da;
+          border-radius: 6px;
+          font-size: 14px;
+          box-sizing: border-box;
+          height: 40px;
+          background: #fff;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .season-input-field:focus {
+          border-color: #3b5bdb;
+          box-shadow: 0 0 0 3px rgba(59,91,219,0.1);
+          outline: none;
+        }
+        .season-table-wrapper {
+          overflow-x: auto;
+          border-radius: 8px;
+          border: 1px solid #e9ecef;
+        }
+        .season-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+          text-align: left;
+        }
+        .season-table th {
+          padding: 12px 16px;
+          font-weight: 600;
+          color: #495057;
+          background: #f8f9fa;
+          border-bottom: 2px solid #dee2e6;
+        }
+        .season-table td {
+          padding: 14px 16px;
+          border-bottom: 1px solid #e9ecef;
+          vertical-align: middle;
+        }
+        .season-table tr:last-child td {
+          border-bottom: none;
+        }
+        .season-table tr:hover {
+          background-color: #f8f9fa;
+        }
+        
+        @media (max-width: 768px) {
+          .season-card {
+            padding: 16px;
+          }
+          .season-form {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+          .season-form > div {
+            width: 100% !important;
+          }
+          .season-form button {
+            width: 100%;
+            justify-content: center;
+            margin-top: 5px;
+          }
+        }
+      `}</style>
       <header className="page-header">
         <div className="header-content">
           <h1>
@@ -498,10 +576,10 @@ const SystemSettingsPage: React.FC = () => {
                   创建新赛季
                 </h2>
               </div>
-              <div style={{ background: '#fcfcfc', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
-                <form onSubmit={handleCreateSeason} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+              <div className="season-card">
+                <form onSubmit={handleCreateSeason} className="season-form">
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#555', marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#495057', marginBottom: '8px' }}>
                       新赛季名称：
                     </label>
                     <input
@@ -510,18 +588,18 @@ const SystemSettingsPage: React.FC = () => {
                       value={newSeasonName}
                       onChange={(e) => setNewSeasonName(e.target.value)}
                       disabled={isArchivingSeason}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }}
+                      className="season-input-field"
                     />
                   </div>
                   <div style={{ width: '220px' }}>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#555', marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#495057', marginBottom: '8px' }}>
                       赛制类型：
                     </label>
                     <select
                       value={newSeasonType}
                       onChange={(e) => setNewSeasonType(e.target.value)}
                       disabled={isArchivingSeason}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box', height: '40px', background: '#fff' }}
+                      className="season-input-field"
                     >
                       <option value="LEAGUE">单循环联赛 (League)</option>
                       <option value="CUP">杯赛 (Cup - 小组+淘汰赛)</option>
@@ -556,36 +634,36 @@ const SystemSettingsPage: React.FC = () => {
                   赛季状态管理
                 </h2>
               </div>
-              <div style={{ background: '#fcfcfc', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="backup-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+              <div className="season-card">
+                <div className="season-table-wrapper">
+                  <table className="season-table">
                     <thead>
-                      <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>赛季名称</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>类型</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>状态</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 'bold', color: '#555', width: '150px' }}>操作</th>
+                      <tr>
+                        <th>赛季名称</th>
+                        <th>类型</th>
+                        <th>状态</th>
+                        <th style={{ textAlign: 'center', width: '150px' }}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
                       {seasons.map((s) => (
-                        <tr key={s.id} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '12px 10px', fontWeight: '500', color: '#333' }}>{s.name}</td>
-                          <td style={{ padding: '12px 10px', color: '#666' }}>
+                        <tr key={s.id}>
+                          <td style={{ fontWeight: '500', color: '#333' }}>{s.name}</td>
+                          <td style={{ color: '#666' }}>
                             {s.type === 'CUP' ? (
                               <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>🏆 杯赛</span>
                             ) : (
                               <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>⚽ 联赛</span>
                             )}
                           </td>
-                          <td style={{ padding: '12px 10px' }}>
+                          <td>
                             {s.status === 'active' ? (
                               <span style={{ background: '#e6fffa', color: '#00a389', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #b2f5ea' }}>活跃中</span>
                             ) : (
                               <span style={{ background: '#f7fafc', color: '#718096', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', border: '1px solid #e2e8f0' }}>已归档</span>
                             )}
                           </td>
-                          <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center' }}>
                             <button
                               onClick={() => handleUpdateSeasonStatus(s.id, s.status)}
                               disabled={isUpdatingStatusId === s.id}

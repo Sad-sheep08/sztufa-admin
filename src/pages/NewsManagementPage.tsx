@@ -190,8 +190,75 @@ const NewsManagementPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="news-container">
+      <style>{`
+        .news-container {
+          padding: 24px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        .news-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+          gap: 15px;
+        }
+        .news-filter-box {
+          background: #fff;
+          padding: 16px 20px;
+          border-radius: 12px;
+          border: 1px solid #e9ecef;
+          margin-bottom: 20px;
+          display: flex;
+          gap: 15px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        .news-filter-buttons {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .news-table-wrapper {
+          background: #fff;
+          border-radius: 12px;
+          border: 1px solid #e9ecef;
+          overflow-x: auto;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+        .news-modal-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+        }
+        
+        @media (max-width: 768px) {
+          .news-container {
+            padding: 16px;
+          }
+          .news-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .news-header button {
+            width: 100%;
+            justify-content: center;
+          }
+          .news-filter-box {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 12px 16px;
+            gap: 10px;
+          }
+          .news-modal-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+        }
+      `}</style>
+      <header className="news-header">
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1a1a1a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileText color="#3b5bdb" size={28} />
@@ -240,9 +307,9 @@ const NewsManagementPage: React.FC = () => {
       )}
 
       {/* 过滤器 */}
-      <div style={{ background: '#fff', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e9ecef', marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center' }}>
+      <div className="news-filter-box">
         <span style={{ fontSize: '14px', fontWeight: 600, color: '#495057' }}>📌 按分类筛选:</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="news-filter-buttons">
           {['all', '赛事', '招新', '活动', '资讯', '其他'].map((cat) => (
             <button
               key={cat}
@@ -266,7 +333,7 @@ const NewsManagementPage: React.FC = () => {
       </div>
 
       {/* 列表表格 */}
-      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e9ecef', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+      <div className="news-table-wrapper">
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '10px' }}>
             <Loader2 className="loader" size={32} color="#3b5bdb" style={{ animation: 'spin 1s linear infinite' }} />
@@ -416,7 +483,7 @@ const NewsManagementPage: React.FC = () => {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="news-modal-grid">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '13px', fontWeight: 600, color: '#495057' }}>分类 *</label>
                     <select
