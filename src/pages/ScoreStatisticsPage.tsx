@@ -94,6 +94,10 @@ const MatchViewEditPage: React.FC = () => {
           mvpPlayerName: m.mvpPlayerName,
           seasonId: m.seasonId || '',
           lineups: m.lineups || [],
+          stage: m.stage || 'LEAGUE',
+          groupName: m.groupName || '',
+          knockoutRound: m.knockoutRound || '',
+          knockoutMatchIndex: m.knockoutMatchIndex,
         };
       });
       setMatches(matchList);
@@ -388,6 +392,10 @@ const MatchViewEditPage: React.FC = () => {
         events: events,
         mvpPlayerId: editData.mvpPlayerId || null,
         mvpPlayerName: editData.mvpPlayerName || null,
+        stage: editData.stage || 'LEAGUE',
+        groupName: editData.stage === 'GROUP' ? editData.groupName : undefined,
+        knockoutRound: editData.stage === 'KNOCKOUT' ? editData.knockoutRound : undefined,
+        knockoutMatchIndex: editData.stage === 'KNOCKOUT' ? (typeof editData.knockoutMatchIndex === 'string' ? parseInt(editData.knockoutMatchIndex, 10) : editData.knockoutMatchIndex) : undefined,
         lineups: (editData.lineups || []).map(l => ({
           playerId: l.playerId,
           teamType: l.teamType,
@@ -650,6 +658,114 @@ const MatchViewEditPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {(() => {
+              const currentSeason = seasons.find(s => s.id === (editData?.seasonId || selectedMatch?.seasonId || selectedSeasonId));
+              if (currentSeason?.type !== 'CUP') return null;
+
+              return (
+                <div className="form-row" style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '15px', marginBottom: '15px' }}>
+                  <div className="form-group">
+                    <label>比赛阶段</label>
+                    {isEditing ? (
+                      <select
+                        value={editData?.stage || 'GROUP'}
+                        onChange={(e) => {
+                          const stage = e.target.value;
+                          if (editData) {
+                            setEditData({
+                              ...editData,
+                              stage,
+                              groupName: stage === 'GROUP' ? 'A' : '',
+                              knockoutRound: stage === 'KNOCKOUT' ? 'QF' : '',
+                              knockoutMatchIndex: stage === 'KNOCKOUT' ? 1 : undefined
+                            });
+                          }
+                        }}
+                        className="form-select"
+                      >
+                        <option value="GROUP">小组赛 (Group Stage)</option>
+                        <option value="KNOCKOUT">淘汰赛 (Knockout Stage)</option>
+                      </select>
+                    ) : (
+                      <div className="form-value">
+                        {selectedMatch.stage === 'GROUP' ? '小组赛' : selectedMatch.stage === 'KNOCKOUT' ? '淘汰赛' : '未设定'}
+                      </div>
+                    )}
+                  </div>
+
+                  {((isEditing ? editData?.stage : selectedMatch.stage) === 'GROUP') && (
+                    <div className="form-group">
+                      <label>小组</label>
+                      {isEditing ? (
+                        <select
+                          value={editData?.groupName || 'A'}
+                          onChange={(e) => handleFieldChange('groupName', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="A">A 组</option>
+                          <option value="B">B 组</option>
+                          <option value="C">C 组</option>
+                          <option value="D">D 组</option>
+                          <option value="E">E 组</option>
+                          <option value="F">F 组</option>
+                          <option value="G">G 组</option>
+                          <option value="H">H 组</option>
+                        </select>
+                      ) : (
+                        <div className="form-value">{selectedMatch.groupName || '-'} 组</div>
+                      )}
+                    </div>
+                  )}
+
+                  {((isEditing ? editData?.stage : selectedMatch.stage) === 'KNOCKOUT') && (
+                    <>
+                      <div className="form-group">
+                        <label>淘汰赛轮次</label>
+                        {isEditing ? (
+                          <select
+                            value={editData?.knockoutRound || 'QF'}
+                            onChange={(e) => handleFieldChange('knockoutRound', e.target.value)}
+                            className="form-select"
+                          >
+                            <option value="R16">1/8 决赛 (16强)</option>
+                            <option value="QF">1/4 决赛 (8强)</option>
+                            <option value="SF">半决赛 (4强)</option>
+                            <option value="F">决赛</option>
+                          </select>
+                        ) : (
+                          <div className="form-value">
+                            {selectedMatch.knockoutRound === 'R16' ? '1/8 决赛' : selectedMatch.knockoutRound === 'QF' ? '1/4 决赛' : selectedMatch.knockoutRound === 'SF' ? '半决赛' : selectedMatch.knockoutRound === 'F' ? '决赛' : '-'}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="form-group">
+                        <label>对阵序号</label>
+                        {isEditing ? (
+                          <select
+                            value={editData?.knockoutMatchIndex || '1'}
+                            onChange={(e) => handleFieldChange('knockoutMatchIndex', parseInt(e.target.value, 10))}
+                            className="form-select"
+                          >
+                            <option value="1">对阵 #1</option>
+                            <option value="2">对阵 #2</option>
+                            <option value="3">对阵 #3</option>
+                            <option value="4">对阵 #4</option>
+                            <option value="5">对阵 #5</option>
+                            <option value="6">对阵 #6</option>
+                            <option value="7">对阵 #7</option>
+                            <option value="8">对阵 #8</option>
+                          </select>
+                        ) : (
+                          <div className="form-value">对阵 #{selectedMatch.knockoutMatchIndex || '-'}</div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="form-row">
               <div className="form-group">

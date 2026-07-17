@@ -4,10 +4,11 @@ import { backupApi, seasonApi, userApi, teamApi, authApi } from '../api/service'
 import { BackupDTO, TeamDTO } from '../api/types';
 
 const SystemSettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'backup' | 'users'>('backup');
+  const [activeTab, setActiveTab] = useState<'backup' | 'groups' | 'users'>('backup');
   const [backups, setBackups] = useState<BackupDTO[]>([]);
   const [activeSeason, setActiveSeason] = useState<any>(null);
   const [newSeasonName, setNewSeasonName] = useState('');
+  const [newSeasonType, setNewSeasonType] = useState('LEAGUE');
   const [isArchivingSeason, setIsArchivingSeason] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -30,11 +31,24 @@ const SystemSettingsPage: React.FC = () => {
   const [userError, setUserError] = useState<string | null>(null);
   const [userSuccess, setUserSuccess] = useState<string | null>(null);
 
+  const [seasons, setSeasons] = useState<any[]>([]);
+  const [isUpdatingStatusId, setIsUpdatingStatusId] = useState<string | null>(null);
+
   useEffect(() => {
     loadBackups();
     loadActiveSeason();
+    loadAllSeasons();
     loadTeams();
   }, []);
+
+  const loadAllSeasons = async () => {
+    try {
+      const data = await seasonApi.getAll();
+      setSeasons(data || []);
+    } catch (err) {
+      console.error('加载所有赛季失败:', err);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -193,20 +207,39 @@ const SystemSettingsPage: React.FC = () => {
     }
   };
 
+  const [groupsData, setGroupsData] = useState<{ teamId: string; groupName: string }[]>([]);
+  const [isSavingGroups, setIsSavingGroups] = useState(false);
+
+  const loadSeasonGroups = async (seasonId: string) => {
+    try {
+      const data = await seasonApi.getGroups(seasonId);
+      const initialMap = (data || []).map((g: any) => ({
+        teamId: g.teamId,
+        groupName: g.groupName
+      }));
+      setGroupsData(initialMap);
+    } catch (err) {
+      console.error('加载分组失败:', err);
+    }
+  };
+
   const loadActiveSeason = async () => {
     try {
       const data = await seasonApi.getActive();
       setActiveSeason(data);
+      if (data && data.type === 'CUP') {
+        loadSeasonGroups(data.id);
+      }
     } catch (err) {
       console.error('加载活跃赛季失败:', err);
     }
   };
 
-  const handleArchiveSeason = async (e: React.FormEvent) => {
+  const handleCreateSeason = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSeasonName.trim()) return;
 
-    if (!confirm(`【警告】确定要结束并归档当前赛季“${activeSeason?.name || '未命名'}”，并开启新赛季“${newSeasonName}”吗？\n\n此操作将会：\n1. 将往期赛季的数据进行锁定和归档\n2. 清空所有球员本赛季的黄红牌数并全部恢复为可用状态（状态重设为active）\n\n确定执行吗？`)) {
+    if (!confirm(`确定要创建新赛季“${newSeasonName}”并将其直接设为活跃状态吗？\n\n此操作会重置球员的卡片数，但不会强行归档现有的其他活跃赛季。`)) {
       return;
     }
 
@@ -214,16 +247,84 @@ const SystemSettingsPage: React.FC = () => {
     setError(null);
     setSuccessMessage(null);
     try {
-      const res = await seasonApi.archive(newSeasonName);
-      setSuccessMessage(`已成功归档老赛季，并开启新活跃赛季：${res.name}`);
+      const res = await seasonApi.create(newSeasonName, newSeasonType);
+      setSuccessMessage(`已成功创建新活跃赛季：${res.name}`);
       setNewSeasonName('');
       loadActiveSeason();
+      loadAllSeasons();
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err) {
-      console.error('归档新赛季失败:', err);
-      setError(err instanceof Error ? err.message : '归档新赛季失败');
+      console.error('创建新赛季失败:', err);
+      setError(err instanceof Error ? err.message : '创建新赛季失败');
     } finally {
       setIsArchivingSeason(false);
+    }
+  };
+
+  const handleUpdateSeasonStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'active' ? 'archived' : 'active';
+    if (!confirm(`确定要将该赛季的状态修改为【${nextStatus === 'active' ? '活跃' : '已归档'}】吗？`)) {
+      return;
+    }
+
+    setIsUpdatingStatusId(id);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await seasonApi.updateStatus(id, nextStatus);
+      setSuccessMessage('已成功更新赛季状态！');
+      loadActiveSeason();
+      loadAllSeasons();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('更新赛季状态失败:', err);
+      setError(err instanceof Error ? err.message : '更新赛季状态失败');
+    } finally {
+      setIsUpdatingStatusId(null);
+    }
+  };
+
+  const handleTeamGroupChange = (teamId: string, groupName: string) => {
+    setGroupsData(prev => {
+      const filtered = prev.filter(g => g.teamId !== teamId);
+      if (groupName) {
+        return [...filtered, { teamId, groupName }];
+      }
+      return filtered;
+    });
+  };
+
+  const handleSaveGroups = async () => {
+    if (!activeSeason) return;
+    setIsSavingGroups(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await seasonApi.updateGroups(activeSeason.id, groupsData);
+      setSuccessMessage('小组分配已成功保存并重新计算了积分榜！');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('保存分组失败:', err);
+      setError(err instanceof Error ? err.message : '保存分组失败');
+    } finally {
+      setIsSavingGroups(false);
+    }
+  };
+
+  const handleGenerateKnockout = async () => {
+    if (!activeSeason) return;
+    if (!confirm('【确认】确定要根据当前的小组赛积分榜一键生成淘汰赛对阵吗？\n如果已存在对应的淘汰赛比赛，队伍信息将会被更新覆盖。确定执行吗？')) {
+      return;
+    }
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const res = await seasonApi.generateKnockout(activeSeason.id);
+      setSuccessMessage(`淘汰赛对阵生成成功！已生成首轮淘汰赛轮次: ${res.round}，新建了 ${res.countCreated} 场，更新了 ${res.countUpdated} 场比赛。请到比赛信息管理页面查看对阵结果。`);
+      setTimeout(() => setSuccessMessage(null), 6000);
+    } catch (err) {
+      console.error('一键生成淘汰赛失败:', err);
+      setError(err instanceof Error ? err.message : '一键生成淘汰赛失败，请先确认小组赛比分已录入且系统已计算出积分榜');
     }
   };
 
@@ -316,6 +417,28 @@ const SystemSettingsPage: React.FC = () => {
             <Database size={16} />
             📂 数据灾备与归档
           </button>
+          {activeSeason?.type === 'CUP' && (
+            <button
+              onClick={() => setActiveTab('groups')}
+              style={{
+                padding: '8px 18px',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: activeTab === 'groups' ? '#0070f3' : '#666',
+                background: activeTab === 'groups' ? '#f0f7ff' : 'none',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Users size={16} />
+              🏆 赛季分组配置
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('users')}
             style={{
@@ -371,37 +494,38 @@ const SystemSettingsPage: React.FC = () => {
             <div className="form-section" style={{ marginBottom: '30px' }}>
               <div className="section-header" style={{ marginBottom: '20px' }}>
                 <h2 className="form-title" style={{ margin: 0 }}>
-                  <span className="icon">🏆</span>
-                  赛季管理与归档重置
+                  <span className="icon">⚡</span>
+                  创建新赛季
                 </h2>
               </div>
               <div style={{ background: '#fcfcfc', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px dashed #eee', paddingBottom: '15px' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#333' }}>当前活跃赛季</h3>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-                      目前所有新赛程录入、数据统计与球员卡片累计均关联在此活跃赛季：
-                    </p>
-                  </div>
-                  <span style={{ background: '#e1f5fe', color: '#0288d1', padding: '6px 16px', borderRadius: '20px', fontSize: '15px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    <Calendar size={16} />
-                    {activeSeason ? activeSeason.name : '加载中...'}
-                  </span>
-                </div>
-
-                <form onSubmit={handleArchiveSeason} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+                <form onSubmit={handleCreateSeason} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#555', marginBottom: '8px' }}>
-                      开启并切换到新赛季（一键归档当前赛季）：
+                      新赛季名称：
                     </label>
                     <input
                       type="text"
-                      placeholder="例如：2026秋季赛季"
+                      placeholder="例如：2026秋季杯赛"
                       value={newSeasonName}
                       onChange={(e) => setNewSeasonName(e.target.value)}
                       disabled={isArchivingSeason}
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }}
                     />
+                  </div>
+                  <div style={{ width: '220px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#555', marginBottom: '8px' }}>
+                      赛制类型：
+                    </label>
+                    <select
+                      value={newSeasonType}
+                      onChange={(e) => setNewSeasonType(e.target.value)}
+                      disabled={isArchivingSeason}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box', height: '40px', background: '#fff' }}
+                    >
+                      <option value="LEAGUE">单循环联赛 (League)</option>
+                      <option value="CUP">杯赛 (Cup - 小组+淘汰赛)</option>
+                    </select>
                   </div>
                   <button
                     type="submit"
@@ -412,16 +536,99 @@ const SystemSettingsPage: React.FC = () => {
                     {isArchivingSeason ? (
                       <>
                         <RefreshCw size={18} className="spinning" />
-                        正在归档重置中...
+                        正在创建中...
                       </>
                     ) : (
                       <>
-                        <FileCheck size={18} />
-                        确认归档并开启新赛季
+                        <Plus size={18} />
+                        创建新赛季
                       </>
                     )}
                   </button>
                 </form>
+              </div>
+            </div>
+
+            <div className="form-section" style={{ marginBottom: '30px' }}>
+              <div className="section-header" style={{ marginBottom: '20px' }}>
+                <h2 className="form-title" style={{ margin: 0 }}>
+                  <span className="icon">📅</span>
+                  赛季状态管理
+                </h2>
+              </div>
+              <div style={{ background: '#fcfcfc', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="backup-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                    <thead>
+                      <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>赛季名称</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>类型</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>状态</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 'bold', color: '#555', width: '150px' }}>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seasons.map((s) => (
+                        <tr key={s.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '12px 10px', fontWeight: '500', color: '#333' }}>{s.name}</td>
+                          <td style={{ padding: '12px 10px', color: '#666' }}>
+                            {s.type === 'CUP' ? (
+                              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>🏆 杯赛</span>
+                            ) : (
+                              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>⚽ 联赛</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 10px' }}>
+                            {s.status === 'active' ? (
+                              <span style={{ background: '#e6fffa', color: '#00a389', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #b2f5ea' }}>活跃中</span>
+                            ) : (
+                              <span style={{ background: '#f7fafc', color: '#718096', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', border: '1px solid #e2e8f0' }}>已归档</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleUpdateSeasonStatus(s.id, s.status)}
+                              disabled={isUpdatingStatusId === s.id}
+                              className="add-btn small"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '5px 12px',
+                                height: 'auto',
+                                cursor: 'pointer',
+                                background: s.status === 'active' ? '#fff0f0' : '#00a389',
+                                color: s.status === 'active' ? '#d93838' : '#ffffff',
+                                borderColor: s.status === 'active' ? '#ffd1d1' : '#00a389',
+                                borderStyle: 'solid',
+                                borderWidth: '1px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              {isUpdatingStatusId === s.id ? (
+                                <>
+                                  <RefreshCw size={12} className="spinning" />
+                                  处理中...
+                                </>
+                              ) : s.status === 'active' ? (
+                                <>归档赛季</>
+                              ) : (
+                                <>重新激活</>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {seasons.length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>暂无赛季数据</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
@@ -546,6 +753,87 @@ const SystemSettingsPage: React.FC = () => {
               </div>
             </div>
           </>
+        )}
+
+        {/* 页签: 赛季分组配置 */}
+        {activeTab === 'groups' && activeSeason?.type === 'CUP' && (
+          <div className="form-section">
+            <div className="section-header" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className="form-title" style={{ margin: 0 }}>
+                <span className="icon">🏆</span>
+                本赛季分组配置 ({activeSeason.name})
+              </h2>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={handleGenerateKnockout}
+                  className="save-btn"
+                  style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 16px', margin: 0, cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  ⚡ 一键生成淘汰赛对阵
+                </button>
+                <button
+                  onClick={handleSaveGroups}
+                  disabled={isSavingGroups}
+                  className="save-btn"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 16px', margin: 0 }}
+                >
+                  {isSavingGroups ? '正在保存...' : '💾 保存分组配置'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ background: '#fcfcfc', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+              <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px', lineHeight: '1.5' }}>
+                请为本届杯赛赛季的各个参赛球队划分小组。点击右上角“保存分组配置”生效。
+                <br />
+                <strong>提示：</strong>当小组赛比赛全部录入完赛后，可点击左侧“⚡ 一键生成淘汰赛对阵”按钮，系统将自动按积分规则计算出线名次并生成首轮淘汰赛对阵（支持 2组、4组、8组 系统交叉对决）。
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+                {teams.map(team => {
+                  const currentGroup = groupsData.find(g => g.teamId === team.id)?.groupName || '';
+                  return (
+                    <div
+                      key={team.id}
+                      style={{
+                        padding: '12px 15px',
+                        background: '#fff',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {team.teamLogo ? (
+                          <img src={team.teamLogo} alt={team.teamName} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                        ) : (
+                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>⚽</div>
+                        )}
+                        <span style={{ fontWeight: '500', color: '#333' }}>{team.teamName}</span>
+                      </div>
+                      <select
+                        value={currentGroup}
+                        onChange={(e) => handleTeamGroupChange(team.id!, e.target.value)}
+                        style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', background: '#fff', fontSize: '14px' }}
+                      >
+                        <option value="">-- 未分配 --</option>
+                        <option value="A">A 组</option>
+                        <option value="B">B 组</option>
+                        <option value="C">C 组</option>
+                        <option value="D">D 组</option>
+                        <option value="E">E 组</option>
+                        <option value="F">F 组</option>
+                        <option value="G">G 组</option>
+                        <option value="H">H 组</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* 页签 2: 用户权限管理 */}

@@ -72,6 +72,10 @@ export interface MatchDTO {
   mvpPlayerName?: string | null;
   seasonId?: string | null;
   lineups?: any[];
+  stage?: string;
+  groupName?: string;
+  knockoutRound?: string;
+  knockoutMatchIndex?: number;
   createdAt?: string;
   updatedAt?: string;
 }

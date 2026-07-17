@@ -225,13 +225,30 @@ export const matchApi = {
     return handleResponse<MatchDTO>(response);
   },
 
-  getAll: async (page = 1, limit = 100, teamId?: string, seasonId?: string): Promise<MatchListResponse> => {
+  getAll: async (
+    page = 1,
+    limit = 100,
+    teamId?: string,
+    seasonId?: string,
+    stage?: string,
+    groupName?: string,
+    knockoutRound?: string
+  ): Promise<MatchListResponse> => {
     let url = `${BASE_URL}/matches?page=${page}&limit=${limit}`;
     if (teamId) {
       url += `&teamId=${teamId}`;
     }
     if (seasonId) {
       url += `&seasonId=${seasonId}`;
+    }
+    if (stage) {
+      url += `&stage=${stage}`;
+    }
+    if (groupName) {
+      url += `&groupName=${groupName}`;
+    }
+    if (knockoutRound) {
+      url += `&knockoutRound=${knockoutRound}`;
     }
     const response = await fetch(url, {
       method: 'GET',
@@ -412,11 +429,49 @@ export const seasonApi = {
     });
     return handleResponse<any>(response);
   },
-  archive: async (name: string): Promise<any> => {
+  archive: async (name: string, type: string): Promise<any> => {
     const response = await fetch(`${BASE_URL}/seasons/archive`, {
       method: 'POST',
       headers: createHeaders(),
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, type }),
+    });
+    return handleResponse<any>(response);
+  },
+  create: async (name: string, type: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ name, type }),
+    });
+    return handleResponse<any>(response);
+  },
+  updateStatus: async (id: string, status: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/${id}/status`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    return handleResponse<any>(response);
+  },
+  getGroups: async (id: string): Promise<any[]> => {
+    const response = await fetch(`${BASE_URL}/seasons/${id}/groups`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<any[]>(response);
+  },
+  updateGroups: async (id: string, groups: { teamId: string; groupName: string }[]): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/${id}/groups`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify({ groups }),
+    });
+    return handleResponse<any>(response);
+  },
+  generateKnockout: async (id: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/${id}/generate-knockout`, {
+      method: 'POST',
+      headers: createHeaders(),
     });
     return handleResponse<any>(response);
   },

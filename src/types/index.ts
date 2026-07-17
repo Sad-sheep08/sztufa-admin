@@ -100,6 +100,10 @@ export interface Match {
   mvpPlayerName?: string | null;
   seasonId?: string;
   lineups?: any[];
+  stage?: string;
+  groupName?: string;
+  knockoutRound?: string;
+  knockoutMatchIndex?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -121,4 +125,9 @@ export interface MatchFormData {
   status?: string;
   mvpPlayerId?: string | null;
   mvpPlayerName?: string | null;
+  stage?: string;
+  groupName?: string;
+  knockoutRound?: string;
+  knockoutMatchIndex?: string;
+  seasonId?: string;
 }

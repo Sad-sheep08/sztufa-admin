@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Plus, Trash2, Save, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Goal, MatchFormData, Match, MatchEvent } from '../types';
 import { generateId } from '../utils';
-import { matchApi, teamApi } from '../api/service';
+import { matchApi, teamApi, seasonApi } from '../api/service';
 import { MatchDTO, TeamDTO, PlayerDTO } from '../api/types';
 
 const TeamManagementPage: React.FC = () => {
@@ -21,7 +21,16 @@ const TeamManagementPage: React.FC = () => {
     matchDate: '',
     location: '',
     status: 'finished',
+    stage: 'LEAGUE',
+    groupName: '',
+    knockoutRound: '',
+    knockoutMatchIndex: '',
+    seasonId: '',
   });
+
+  const [activeSeasons, setActiveSeasons] = useState<any[]>([]);
+  const [activeSeason, setActiveSeason] = useState<any>(null);
+  const [seasonGroups, setSeasonGroups] = useState<any[]>([]);
 
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,9 +78,71 @@ const TeamManagementPage: React.FC = () => {
     }
   };
 
+  const loadActiveSeasons = async () => {
+    try {
+      const allSeasons = await seasonApi.getAll();
+      const actives = (allSeasons || []).filter((s: any) => s.status === 'active');
+      setActiveSeasons(actives);
+      
+      if (actives.length > 0) {
+        const defaultSeason = actives[0];
+        setActiveSeason(defaultSeason);
+        setFormData(prev => ({ ...prev, seasonId: defaultSeason.id }));
+        
+        if (defaultSeason.type === 'CUP') {
+          const groups = await seasonApi.getGroups(defaultSeason.id);
+          setSeasonGroups(groups || []);
+          setFormData(prev => ({ ...prev, seasonId: defaultSeason.id, stage: 'GROUP', groupName: 'A' }));
+        } else {
+          setFormData(prev => ({ ...prev, seasonId: defaultSeason.id, stage: 'LEAGUE' }));
+        }
+      }
+    } catch (err) {
+      console.error('加载活跃赛季列表失败:', err);
+    }
+  };
+
+  const handleSeasonSelect = async (seasonId: string) => {
+    const selected = activeSeasons.find(s => s.id === seasonId);
+    if (!selected) return;
+
+    setActiveSeason(selected);
+    setFormData(prev => ({
+      ...prev,
+      seasonId,
+      stage: selected.type === 'CUP' ? 'GROUP' : 'LEAGUE',
+      groupName: selected.type === 'CUP' ? 'A' : '',
+      knockoutRound: '',
+      knockoutMatchIndex: '',
+    }));
+
+    if (selected.type === 'CUP') {
+      try {
+        const groups = await seasonApi.getGroups(seasonId);
+        setSeasonGroups(groups || []);
+      } catch (err) {
+        console.error('加载赛季分组失败:', err);
+      }
+    } else {
+      setSeasonGroups([]);
+    }
+  };
+
   React.useEffect(() => {
     loadTeams();
+    loadActiveSeasons();
   }, []);
+
+  const getFilteredTeams = () => {
+    if (activeSeason?.type === 'CUP' && formData.stage === 'GROUP') {
+      const gName = formData.groupName || 'A';
+      const groupTeamIds = seasonGroups
+        .filter(g => g.groupName === gName)
+        .map(g => g.teamId);
+      return availableTeams.filter(t => groupTeamIds.includes(t.id));
+    }
+    return availableTeams;
+  };
 
   const addEvent = (team: 'home' | 'away') => {
     const newEvent: MatchEvent = {
@@ -380,6 +451,11 @@ const TeamManagementPage: React.FC = () => {
         status: (formData.status as any) || 'finished',
         goals: goals,
         events: events,
+        stage: formData.stage || 'LEAGUE',
+        groupName: formData.stage === 'GROUP' ? formData.groupName : undefined,
+        knockoutRound: formData.stage === 'KNOCKOUT' ? formData.knockoutRound : undefined,
+        knockoutMatchIndex: formData.stage === 'KNOCKOUT' ? parseInt(formData.knockoutMatchIndex || '1', 10) : undefined,
+        seasonId: formData.seasonId || undefined,
         lineups: lineups.map(l => ({
           playerId: l.playerId,
           teamType: l.teamType,
@@ -491,12 +567,34 @@ const TeamManagementPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit}>
+
+
           <div className="form-section">
             <h2 className="form-title">
               <span className="icon">⚽</span>
               基本信息
             </h2>
             <div className="form-row">
+              {activeSeasons.length > 0 && (
+                <div className="form-group">
+                  <label>归属赛季</label>
+                  <select
+                    name="seasonId"
+                    value={formData.seasonId || ''}
+                    onChange={(e) => handleSeasonSelect(e.target.value)}
+                    className="form-select"
+                    required
+                  >
+                    <option value="">请选择赛季</option>
+                    {activeSeasons.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.type === 'CUP' ? '杯赛' : '单循环'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>比赛名称</label>
                 <select
@@ -566,6 +664,101 @@ const TeamManagementPage: React.FC = () => {
             </div>
           </div>
 
+          {activeSeason?.type === 'CUP' && (
+            <div className="form-section" style={{ marginBottom: '20px' }}>
+              <h2 className="form-title">
+                <span className="icon">🏆</span>
+                杯赛属性设置
+              </h2>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>比赛阶段</label>
+                  <select
+                    name="stage"
+                    value={formData.stage || 'GROUP'}
+                    onChange={(e) => {
+                      const stage = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        stage,
+                        groupName: stage === 'GROUP' ? 'A' : '',
+                        knockoutRound: stage === 'KNOCKOUT' ? 'QF' : '',
+                        knockoutMatchIndex: stage === 'KNOCKOUT' ? '1' : ''
+                      }));
+                    }}
+                    className="form-select"
+                    required
+                  >
+                    <option value="GROUP">小组赛 (Group Stage)</option>
+                    <option value="KNOCKOUT">淘汰赛 (Knockout Stage)</option>
+                  </select>
+                </div>
+
+                {formData.stage === 'GROUP' && (
+                  <div className="form-group">
+                    <label>小组</label>
+                    <select
+                      name="groupName"
+                      value={formData.groupName || 'A'}
+                      onChange={handleChange}
+                      className="form-select"
+                      required
+                    >
+                      <option value="A">A 组</option>
+                      <option value="B">B 组</option>
+                      <option value="C">C 组</option>
+                      <option value="D">D 组</option>
+                      <option value="E">E 组</option>
+                      <option value="F">F 组</option>
+                      <option value="G">G 组</option>
+                      <option value="H">H 组</option>
+                    </select>
+                  </div>
+                )}
+
+                {formData.stage === 'KNOCKOUT' && (
+                  <>
+                    <div className="form-group">
+                      <label>淘汰赛轮次</label>
+                      <select
+                        name="knockoutRound"
+                        value={formData.knockoutRound || 'QF'}
+                        onChange={handleChange}
+                        className="form-select"
+                        required
+                      >
+                        <option value="R16">1/8 决赛 (16强)</option>
+                        <option value="QF">1/4 决赛 (8强)</option>
+                        <option value="SF">半决赛 (4强)</option>
+                        <option value="F">决赛</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>对阵序号</label>
+                      <select
+                        name="knockoutMatchIndex"
+                        value={formData.knockoutMatchIndex || '1'}
+                        onChange={handleChange}
+                        className="form-select"
+                        required
+                      >
+                        <option value="1">对阵 #1</option>
+                        <option value="2">对阵 #2</option>
+                        <option value="3">对阵 #3</option>
+                        <option value="4">对阵 #4</option>
+                        <option value="5">对阵 #5</option>
+                        <option value="6">对阵 #6</option>
+                        <option value="7">对阵 #7</option>
+                        <option value="8">对阵 #8</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="form-section">
             <h2 className="form-title">
               <span className="icon">🏆</span>
@@ -588,7 +781,7 @@ const TeamManagementPage: React.FC = () => {
                     className="form-select team-select"
                   >
                     <option value="">选择已有球队</option>
-                    {availableTeams.map((team) => (
+                    {getFilteredTeams().map((team) => (
                       <option key={team.id} value={team.id || ''}>
                         {team.teamName}
                       </option>
