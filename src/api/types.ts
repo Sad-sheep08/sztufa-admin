@@ -45,6 +45,7 @@ export interface TeamDTO {
   homeJersey?: string | null;
   awayJersey?: string | null;
   players?: PlayerDTO[];
+  gender?: string;
   createdAt?: string;
   updatedAt?: string;
 }

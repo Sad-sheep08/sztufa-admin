@@ -105,8 +105,15 @@ export const teamApi = {
     return handleResponse<TeamDTO>(response);
   },
 
-  getAll: async (page = 1, limit = 10): Promise<TeamListResponse> => {
-    const response = await fetch(`${BASE_URL}/teams?page=${page}&limit=${limit}`, {
+  getAll: async (page = 1, limit = 10, seasonId?: string, gender?: string): Promise<TeamListResponse> => {
+    let url = `${BASE_URL}/teams?page=${page}&limit=${limit}`;
+    if (seasonId) {
+      url += `&seasonId=${seasonId}`;
+    }
+    if (gender) {
+      url += `&gender=${gender}`;
+    }
+    const response = await fetch(url, {
       method: 'GET',
       headers: createHeaders(),
     });

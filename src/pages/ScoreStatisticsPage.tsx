@@ -343,7 +343,13 @@ const MatchViewEditPage: React.FC = () => {
               ? `乌龙球`
               : e.eventType === 'penalty'
                 ? `点球`
-                : `进球`
+                : e.eventType === 'penalty_shootout_goal'
+                  ? `点球大战进球`
+                  : e.eventType === 'penalty_shootout_miss'
+                    ? `点球大战飞点/罚失`
+                    : e.eventType === 'penalty_miss'
+                      ? `点球罚失`
+                      : `进球`
         ),
         teamType: e.teamType,
         playerId: e.playerId || null,
@@ -1296,6 +1302,9 @@ const MatchViewEditPage: React.FC = () => {
                               <option value="yellow_card">🟨 黄牌</option>
                               <option value="red_card">🟥 红牌</option>
                               <option value="yellow_to_red">🟨🟥 两黄变一红</option>
+                              <option value="penalty_shootout_goal">🥅⚽ 点球大战进球</option>
+                              <option value="penalty_shootout_miss">🥅❌ 点球大战飞点/罚失</option>
+                              <option value="penalty_miss">❌ 常规时间点球罚失</option>
                             </select>
                           ) : (
                             <span>
@@ -1306,6 +1315,9 @@ const MatchViewEditPage: React.FC = () => {
                               {event.eventType === 'yellow_card' && '🟨 黄牌'}
                               {event.eventType === 'red_card' && '🟥 红牌'}
                               {event.eventType === 'yellow_to_red' && '🟨🟥 两黄变一红'}
+                              {event.eventType === 'penalty_shootout_goal' && '🥅⚽ 点球大战进球'}
+                              {event.eventType === 'penalty_shootout_miss' && '🥅❌ 点球大战飞点/罚失'}
+                              {event.eventType === 'penalty_miss' && '❌ 常规时间点球罚失'}
                             </span>
                           )}
                         </td>
@@ -1513,6 +1525,9 @@ const MatchViewEditPage: React.FC = () => {
                               <option value="yellow_card">🟨 黄牌</option>
                               <option value="red_card">🟥 红牌</option>
                               <option value="yellow_to_red">🟨🟥 两黄变一红</option>
+                              <option value="penalty_shootout_goal">🥅⚽ 点球大战进球</option>
+                              <option value="penalty_shootout_miss">🥅❌ 点球大战飞点/罚失</option>
+                              <option value="penalty_miss">❌ 常规时间点球罚失</option>
                             </select>
                           ) : (
                             <span>
@@ -1523,6 +1538,9 @@ const MatchViewEditPage: React.FC = () => {
                               {event.eventType === 'yellow_card' && '🟨 黄牌'}
                               {event.eventType === 'red_card' && '🟥 红牌'}
                               {event.eventType === 'yellow_to_red' && '🟨🟥 两黄变一红'}
+                              {event.eventType === 'penalty_shootout_goal' && '🥅⚽ 点球大战进球'}
+                              {event.eventType === 'penalty_shootout_miss' && '🥅❌ 点球大战飞点/罚失'}
+                              {event.eventType === 'penalty_miss' && '❌ 常规时间点球罚失'}
                             </span>
                           )}
                         </td>

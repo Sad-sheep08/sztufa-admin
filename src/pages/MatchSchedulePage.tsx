@@ -24,23 +24,47 @@ const TeamViewEditPage: React.FC = () => {
   const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
   const [activeSeasonName, setActiveSeasonName] = useState<string>('');
 
+  const [seasons, setSeasons] = useState<any[]>([]);
+  const [filterSeasonId, setFilterSeasonId] = useState<string>('all');
+  const [filterGender, setFilterGender] = useState<string>('all');
+
   useEffect(() => {
-    loadTeams();
-    loadActiveSeasonAndMatches();
+    const initPage = async () => {
+      try {
+        const seasonList = await seasonApi.getAll();
+        setSeasons(seasonList || []);
+        
+        const active = seasonList.find((s: any) => s.status === 'active');
+        if (active) {
+          setFilterSeasonId(active.id);
+          setActiveSeasonId(active.id);
+          setActiveSeasonName(active.name);
+        }
+      } catch (err) {
+        console.error('加载赛季列表失败:', err);
+      }
+    };
+    initPage();
   }, []);
 
-  const loadActiveSeasonAndMatches = async () => {
+  useEffect(() => {
+    loadTeams(filterSeasonId, filterGender);
+    if (filterSeasonId !== 'all') {
+      loadActiveSeasonAndMatchesForSeason(filterSeasonId);
+    } else {
+      setAllMatches([]);
+    }
+  }, [filterSeasonId, filterGender]);
+
+  const loadActiveSeasonAndMatchesForSeason = async (seasonId: string) => {
     try {
-      const seasons = await seasonApi.getAll();
-      const active = seasons.find((s: any) => s.status === 'active');
-      if (active) {
-        setActiveSeasonId(active.id);
-        setActiveSeasonName(active.name);
-        const response = await matchApi.getAll(1, 200, undefined, active.id);
-        setAllMatches(response.data || []);
-      } else {
-        // 没有活跃赛季时，不加载任何比赛数据（避免混入归档赛季数据）
-        setAllMatches([]);
+      const response = await matchApi.getAll(1, 200, undefined, seasonId === 'all' ? undefined : seasonId);
+      setAllMatches(response.data || []);
+      
+      const currentSeason = seasons.find(s => s.id === seasonId);
+      if (currentSeason) {
+        setActiveSeasonId(currentSeason.id);
+        setActiveSeasonName(currentSeason.name);
       }
     } catch (err) {
       console.error('加载比赛记录失败:', err);
@@ -78,10 +102,15 @@ const TeamViewEditPage: React.FC = () => {
     return { cleanSheets, form };
   };
 
-  const loadTeams = async () => {
+  const loadTeams = async (seasonId = filterSeasonId, gender = filterGender) => {
     setIsLoading(true);
     try {
-      const response = await teamApi.getAll(1, 200);
+      const response = await teamApi.getAll(
+        1, 
+        200, 
+        seasonId === 'all' ? undefined : seasonId, 
+        gender === 'all' ? undefined : gender
+      );
       const teamList: Team[] = response.data.map((t: TeamDTO) => ({
         id: t.id || generateId(),
         teamName: t.teamName,
@@ -95,6 +124,7 @@ const TeamViewEditPage: React.FC = () => {
         teamLogo: t.teamLogo || null,
         homeJersey: t.homeJersey || null,
         awayJersey: t.awayJersey || null,
+        gender: t.gender || 'MALE',
         players: t.players?.map((p: PlayerDTO) => ({
           id: p.id || generateId(),
           name: p.name,
@@ -280,6 +310,7 @@ const TeamViewEditPage: React.FC = () => {
         teamLogo: editData.teamLogo || null,
         homeJersey: editData.homeJersey || null,
         awayJersey: editData.awayJersey || null,
+        gender: editData.gender,
       };
 
       // 1. 保存球队基本信息
@@ -513,12 +544,43 @@ const TeamViewEditPage: React.FC = () => {
         )}
 
         <div className="form-section">
-          <div className="section-header">
+          {/* 筛选器栏 */}
+          <div style={{ display: 'flex', gap: '15px', padding: '15px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa', borderRadius: '8px 8px 0 0' }}>
+            <div className="form-group" style={{ margin: 0, flex: 1 }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#666', marginBottom: '4px', display: 'block' }}>按赛季筛选球队</label>
+              <select
+                value={filterSeasonId}
+                onChange={(e) => setFilterSeasonId(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px', height: '36px', backgroundColor: '#fff' }}
+              >
+                <option value="all">全部赛季 (All Seasons)</option>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} {s.status === 'active' ? '(当前活跃)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0, width: '160px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#666', marginBottom: '4px', display: 'block' }}>性别组别筛选</label>
+              <select
+                value={filterGender}
+                onChange={(e) => setFilterGender(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px', height: '36px', backgroundColor: '#fff' }}
+              >
+                <option value="all">全部组别</option>
+                <option value="MALE">男子组 (Men's)</option>
+                <option value="FEMALE">女子组 (Women's)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="section-header" style={{ marginTop: '10px' }}>
             <h2 className="form-title">
               <span className="icon">🏆</span>
               球队列表
             </h2>
-            <button onClick={loadTeams} className="add-btn refresh-btn" disabled={isLoading}>
+            <button onClick={() => loadTeams(filterSeasonId, filterGender)} className="add-btn refresh-btn" disabled={isLoading}>
               <RefreshCw size={16} className={isLoading ? 'spinning' : ''} />
               刷新列表
             </button>
@@ -624,6 +686,21 @@ const TeamViewEditPage: React.FC = () => {
                   />
                 ) : (
                   <div className="form-value">{selectedTeam.teamName}</div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>球队组别</label>
+                {isEditing ? (
+                  <select
+                    value={editData?.gender || 'MALE'}
+                    onChange={(e) => handleFieldChange('gender', e.target.value)}
+                    style={{ width: '100%', height: '42px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: '#fff' }}
+                  >
+                    <option value="MALE">男子组 (Men's)</option>
+                    <option value="FEMALE">女子组 (Women's)</option>
+                  </select>
+                ) : (
+                  <div className="form-value">{selectedTeam.gender === 'FEMALE' ? '女子组' : '男子组'}</div>
                 )}
               </div>
               <div className="form-group">

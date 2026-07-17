@@ -24,6 +24,7 @@ const TeamInfoPage: React.FC = () => {
     teamLogo: null,
     homeJersey: null,
     awayJersey: null,
+    gender: 'MALE',
   });
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -244,6 +245,7 @@ const TeamInfoPage: React.FC = () => {
         teamLogo: teamLogoUrl,
         homeJersey: homeJerseyUrl,
         awayJersey: awayJerseyUrl,
+        gender: teamFormData.gender,
       };
 
       console.log('正在提交球队数据到后端:', teamDTO);

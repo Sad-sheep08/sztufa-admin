@@ -83,6 +83,18 @@ const TeamForm: React.FC<TeamFormProps> = ({ data, onChange }) => {
             required
           />
         </div>
+        <div className="form-group">
+          <label>球队组别 *</label>
+          <select
+            value={data.gender || 'MALE'}
+            onChange={(e) => handleFieldChange('gender', e.target.value)}
+            style={{ width: '100%', height: '42px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: '#fff' }}
+            required
+          >
+            <option value="MALE">男子组 (Men's)</option>
+            <option value="FEMALE">女子组 (Women's)</option>
+          </select>
+        </div>
       </div>
 
       <div className="form-row">
