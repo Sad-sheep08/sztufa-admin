@@ -2,7 +2,7 @@ import React from 'react';
 import { Trash2, Plus, Users, Download } from 'lucide-react';
 import ExcelImporter from '../../../components/ExcelImporter';
 import { Team, Player } from '../../../types';
-import { uploadApi } from '../../../api/service';
+import { uploadImageFile } from '../../../utils/imageUpload';
 
 interface TeamPlayerPanelProps {
   selectedTeam: Team;
@@ -80,11 +80,10 @@ export const TeamPlayerPanel: React.FC<TeamPlayerPanelProps> = ({
                             const file = e.target.files?.[0];
                             if (file) {
                               try {
-                                const res = await uploadApi.upload(file);
-                                if (res.data?.url) onPlayerFieldChange(index, 'photo', res.data.url);
-                                else alert('上传失败');
+                                const url = await uploadImageFile(file, `球员 ${player.name || index + 1} 的照片`);
+                                onPlayerFieldChange(index, 'photo', url);
                               } catch (err: any) {
-                                alert('上传出错: ' + (err?.message || String(err)));
+                                alert(err?.message || String(err));
                               }
                             }
                           }}

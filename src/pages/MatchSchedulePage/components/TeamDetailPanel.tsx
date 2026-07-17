@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle } from 'lucide-react';
 import { Team } from '../../../types';
-import { uploadApi } from '../../../api/service';
+import { uploadImageFile } from '../../../utils/imageUpload';
 
 interface TeamDetailPanelProps {
   selectedTeam: Team;
@@ -66,11 +66,9 @@ const ImageUploadField: React.FC<{
               const file = e.target.files?.[0];
               if (file) {
                 try {
-                  const res = await uploadApi.upload(file);
-                  if (res.data?.url) onUpload(res.data.url);
-                  else alert('上传失败');
+                  onUpload(await uploadImageFile(file, label));
                 } catch (err: any) {
-                  alert('上传错误: ' + (err?.message || String(err)));
+                  alert(err?.message || String(err));
                 }
               }
             }}

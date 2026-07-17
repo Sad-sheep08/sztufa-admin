@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Image } from 'lucide-react';
 import { TeamFormData } from '../types';
+import { validateImageFile } from '../utils/imageUpload';
 
 interface TeamFormProps {
   data: TeamFormData;
@@ -19,6 +20,12 @@ const TeamForm: React.FC<TeamFormProps> = ({ data, onChange }) => {
     file: File | null
   ) => {
     if (file) {
+      try {
+        validateImageFile(file, '球队图片');
+      } catch (error) {
+        alert(error instanceof Error ? error.message : '图片校验失败');
+        return;
+      }
       const base64 = await fileToBase64(file);
       setPreview((prev) => ({ ...prev, [field]: base64 }));
     } else {

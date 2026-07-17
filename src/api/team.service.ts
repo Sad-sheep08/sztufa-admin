@@ -1,7 +1,16 @@
-import { TeamDTO, TeamListResponse, PlayerDTO } from './types';
+import { CreateTeamWithPlayersDTO, TeamDTO, TeamListResponse, PlayerDTO } from './types';
 import { BASE_URL, createHeaders, handleResponse } from './http';
 
 export const teamApi = {
+  createWithPlayers: async (teamData: CreateTeamWithPlayersDTO): Promise<TeamDTO> => {
+    const response = await fetch(`${BASE_URL}/teams/with-players`, {
+      method: 'POST',
+      headers: createHeaders(),
+      body: JSON.stringify(teamData),
+    });
+    return handleResponse<TeamDTO>(response);
+  },
+
   create: async (teamData: TeamDTO): Promise<TeamDTO> => {
     const response = await fetch(`${BASE_URL}/teams`, {
       method: 'POST',

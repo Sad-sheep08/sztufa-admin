@@ -225,10 +225,25 @@ const LoginPage: React.FC = () => {
                     try {
                       const start = Date.now();
                       const res = await fetch('/api/v1/seasons/active');
-                      const data = await res.json();
+                      const responseText = await res.text();
+
+                      if (!res.ok) {
+                        if (res.status === 502 || res.status === 504) {
+                          throw new Error(`本地后端未启动或无法连接（HTTP ${res.status}，请检查 localhost:3001）`);
+                        }
+                        throw new Error(`API 请求失败（HTTP ${res.status}）${responseText ? `：${responseText.slice(0, 120)}` : ''}`);
+                      }
+
+                      let data: { name?: string };
+                      try {
+                        data = JSON.parse(responseText) as { name?: string };
+                      } catch {
+                        throw new Error('API 已响应，但返回内容不是有效的 JSON');
+                      }
+
                       const latency = Date.now() - start;
                       resultDiv.style.color = '#2b8a3e';
-                      resultDiv.innerHTML = `✅ 连通成功! 响应时长: ${latency}ms<br/>当前活动赛季: <strong>${data?.name || '未命名'}</strong>`;
+                      resultDiv.innerText = `✅ 连通成功! 响应时长: ${latency}ms\n当前活动赛季: ${data.name || '未命名'}`;
                     } catch (e) {
                       resultDiv.style.color = '#c92a2a';
                       resultDiv.innerText = `❌ 连通失败! 错误: ${e instanceof Error ? e.message : String(e)}`;

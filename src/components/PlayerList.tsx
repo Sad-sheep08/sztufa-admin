@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, User, Upload } from 'lucide-react';
+import { Plus, Trash2, User } from 'lucide-react';
 import { Player, PlayerFormData } from '../types';
-import { uploadApi } from '../api/service';
+import { validateImageFile } from '../utils/imageUpload';
 
 interface PlayerListProps {
   players: Player[];
@@ -25,24 +25,22 @@ const PlayerList: React.FC<PlayerListProps> = ({
     teamId: '',
   });
   const [preview, setPreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = async (file: File | null) => {
+  const isValidPhoto = (file: File): boolean => {
+    try {
+      validateImageFile(file, '球员照片');
+      return true;
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '照片校验失败');
+      return false;
+    }
+  };
+
+  const handleFileChange = (file: File | null) => {
     if (file) {
-      setIsUploading(true);
-      try {
-        const response = await uploadApi.upload(file);
-        if (response.data && response.data.url) {
-          setPreview(response.data.url);
-          setNewPlayer((prev) => ({ ...prev, photo: response.data.url }));
-        } else {
-          alert('图片上传失败，服务器未返回存储地址');
-        }
-      } catch (err) {
-        alert('图片上传失败');
-      } finally {
-        setIsUploading(false);
-      }
+      if (!isValidPhoto(file)) return;
+      setPreview(URL.createObjectURL(file));
+      setNewPlayer((prev) => ({ ...prev, photo: file }));
     } else {
       setPreview(null);
       setNewPlayer((prev) => ({ ...prev, photo: null }));
@@ -50,16 +48,13 @@ const PlayerList: React.FC<PlayerListProps> = ({
   };
 
   const handleAddPlayer = () => {
-    if (isUploading) {
-      alert('请等待照片上传完毕再确认添加');
-      return;
-    }
     if (newPlayer.name.trim() && newPlayer.studentId.trim() && newPlayer.jerseyNumber !== '') {
       onAddPlayer({
         name: newPlayer.name.trim(),
         studentId: newPlayer.studentId.trim(),
         jerseyNumber: newPlayer.jerseyNumber,
-        photo: typeof newPlayer.photo === 'string' ? newPlayer.photo : preview,
+        photo: preview,
+        photoFile: newPlayer.photo instanceof File ? newPlayer.photo : null,
         teamId: '',
       });
       setNewPlayer({ name: '', studentId: '', jerseyNumber: '', photo: null, teamId: '' });
@@ -72,16 +67,13 @@ const PlayerList: React.FC<PlayerListProps> = ({
     setNewPlayer((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePlayerPhotoUpload = async (playerId: string, file: File | null) => {
+  const handlePlayerPhotoChange = (playerId: string, file: File | null) => {
     if (file) {
-      try {
-        const response = await uploadApi.upload(file);
-        if (response.data && response.data.url) {
-          onUpdatePlayer(playerId, { photo: response.data.url });
-        }
-      } catch (err) {
-        alert('图片上传失败');
-      }
+      if (!isValidPhoto(file)) return;
+      onUpdatePlayer(playerId, {
+        photo: URL.createObjectURL(file),
+        photoFile: file,
+      });
     }
   };
 
@@ -195,7 +187,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handlePlayerPhotoUpload(player.id, e.target.files?.[0] || null)}
+                        onChange={(e) => handlePlayerPhotoChange(player.id, e.target.files?.[0] || null)}
                         className="file-input"
                         title="点击上传照片"
                       />

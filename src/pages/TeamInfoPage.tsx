@@ -6,8 +6,9 @@ import PlayerList from '../components/PlayerList';
 import ExcelImporter from '../components/ExcelImporter';
 import { Team, TeamFormData, Player } from '../types';
 import { generateId, fileToBase64 } from '../utils';
-import { teamApi, playerApi, uploadApi } from '../api/service';
-import { TeamDTO, PlayerDTO } from '../api/types';
+import { teamApi } from '../api/service';
+import { CreateTeamPlayerDTO, CreateTeamWithPlayersDTO } from '../api/types';
+import { uploadImageFile } from '../utils/imageUpload';
 import { useAuth } from '../contexts/AuthContext';
 
 const TeamInfoPage: React.FC = () => {
@@ -193,47 +194,68 @@ const TeamInfoPage: React.FC = () => {
 
     setIsLoading(true);
 
-    // 计算总步骤（1个球队创建，以及多个球员创建）
-    const totalSteps = 1 + players.length;
+    const imageCount = [
+      teamFormData.teamLogo,
+      teamFormData.homeJersey,
+      teamFormData.awayJersey,
+      ...players.map((player) => player.photoFile),
+    ].filter(Boolean).length;
+    const totalSteps = imageCount + 1;
     let currentStep = 0;
 
     try {
-      setSaveProgress({ current: currentStep, total: totalSteps, message: '正在上传图片并准备数据...' });
-
-      // 第一步：将图片上传到 Cloudflare R2
-      let teamLogoUrl: string | null = null;
-      let homeJerseyUrl: string | null = null;
-      let awayJerseyUrl: string | null = null;
-
-      if (teamFormData.teamLogo) {
-        const uploadRes = await uploadApi.upload(teamFormData.teamLogo);
-        if (uploadRes.data && uploadRes.data.url) {
-          teamLogoUrl = uploadRes.data.url;
-        } else {
-          throw new Error('队徽上传失败，服务器未返回图片存储路径');
+      const uploadImage = async (file: File, label: string): Promise<string> => {
+        setSaveProgress({
+          current: currentStep,
+          total: totalSteps,
+          message: `正在上传${label}...`,
+        });
+        try {
+          const url = await uploadImageFile(file, label);
+          currentStep++;
+          return url;
+        } catch (error) {
+          throw error;
         }
-      }
-      if (teamFormData.homeJersey) {
-        const uploadRes = await uploadApi.upload(teamFormData.homeJersey);
-        if (uploadRes.data && uploadRes.data.url) {
-          homeJerseyUrl = uploadRes.data.url;
-        } else {
-          throw new Error('主场球衣上传失败，服务器未返回图片存储路径');
+      };
+
+      const teamLogoUrl = teamFormData.teamLogo
+        ? await uploadImage(teamFormData.teamLogo, '队徽')
+        : null;
+      const homeJerseyUrl = teamFormData.homeJersey
+        ? await uploadImage(teamFormData.homeJersey, '主场球衣')
+        : null;
+      const awayJerseyUrl = teamFormData.awayJersey
+        ? await uploadImage(teamFormData.awayJersey, '客场球衣')
+        : null;
+
+      const playerPayloads: CreateTeamPlayerDTO[] = [];
+      for (const player of players) {
+        let photoUrl = player.photo;
+        if (player.photoFile) {
+          photoUrl = await uploadImage(player.photoFile, `球员 ${player.name} 的照片`);
+        } else if (photoUrl?.startsWith('data:') || photoUrl?.startsWith('blob:')) {
+          photoUrl = null;
         }
-      }
-      if (teamFormData.awayJersey) {
-        const uploadRes = await uploadApi.upload(teamFormData.awayJersey);
-        if (uploadRes.data && uploadRes.data.url) {
-          awayJerseyUrl = uploadRes.data.url;
-        } else {
-          throw new Error('客场球衣上传失败，服务器未返回图片存储路径');
-        }
+
+        playerPayloads.push({
+          name: player.name,
+          studentId: player.studentId,
+          jerseyNumber: player.jerseyNumber,
+          photo: photoUrl,
+          status: player.status || 'active',
+          yellowCards: Number(player.yellowCards) || 0,
+          redCards: Number(player.redCards) || 0,
+        });
       }
 
-      setSaveProgress({ current: currentStep, total: totalSteps, message: '正在向数据库创建球队信息...' });
+      setSaveProgress({
+        current: currentStep,
+        total: totalSteps,
+        message: '正在以事务方式保存球队和全部球员...',
+      });
 
-      // 第二步：准备球队数据（不包含players，因为需要先创建球队获取ID）
-      const teamDTO: TeamDTO = {
+      const teamDTO: CreateTeamWithPlayersDTO = {
         teamName: teamFormData.teamName,
         teamDoctor: teamFormData.teamDoctor,
         headCoach: teamFormData.headCoach,
@@ -246,61 +268,27 @@ const TeamInfoPage: React.FC = () => {
         homeJersey: homeJerseyUrl,
         awayJersey: awayJerseyUrl,
         gender: teamFormData.gender,
+        players: playerPayloads,
       };
 
-      console.log('正在提交球队数据到后端:', teamDTO);
-      
-      // 第三步：创建球队
-      const savedTeamData = await teamApi.create(teamDTO);
+      const savedTeamData = await teamApi.createWithPlayers(teamDTO);
       const teamId = savedTeamData.id;
       if (!teamId) {
         throw new Error('服务器保存球队信息失败，未返回有效的球队ID');
       }
       currentStep++;
 
-      console.log('球队创建成功，球队ID:', teamId);
-
-      // 第四步：为每个球员创建记录
-      const savedPlayers: Player[] = [];
-      try {
-        for (const player of players) {
-          setSaveProgress({
-            current: currentStep,
-            total: totalSteps,
-            message: `正在添加球员: ${player.name} (学号 ${player.studentId})...`
-          });
-          const playerDTO: PlayerDTO = {
-            name: player.name,
-            studentId: player.studentId,
-            jerseyNumber: player.jerseyNumber,
-            photo: player.photo,
-            teamId: teamId,
-          };
-
-          console.log('正在创建球员:', playerDTO);
-          const savedPlayerData = await playerApi.create(playerDTO);
-          
-          savedPlayers.push({
-            id: savedPlayerData.id || generateId(),
-            name: savedPlayerData.name,
-            studentId: savedPlayerData.studentId,
-            jerseyNumber: savedPlayerData.jerseyNumber,
-            photo: savedPlayerData.photo || null,
-            teamId: savedPlayerData.teamId || teamId,
-          });
-          currentStep++;
-        }
-      } catch (playerErr) {
-        console.error('创建球员失败，正在清理删除刚才创建的球队:', teamId);
-        if (teamId) {
-          try {
-            await teamApi.delete(teamId);
-          } catch (deleteErr) {
-            console.error('清理删除球队失败:', deleteErr);
-          }
-        }
-        throw playerErr;
-      }
+      const savedPlayers: Player[] = (savedTeamData.players || []).map((player) => ({
+        id: player.id || generateId(),
+        name: player.name,
+        studentId: player.studentId,
+        jerseyNumber: player.jerseyNumber,
+        photo: player.photo || null,
+        status: player.status || 'active',
+        yellowCards: player.yellowCards || 0,
+        redCards: player.redCards || 0,
+        teamId: player.teamId || teamId,
+      }));
 
       setSaveProgress({
         current: totalSteps,
@@ -308,9 +296,6 @@ const TeamInfoPage: React.FC = () => {
         message: '同步完成！正在重新渲染...'
       });
 
-      console.log('所有球员创建成功，共', savedPlayers.length, '名球员');
-
-      // 第五步：构建完整的球队对象
       const team: Team = {
         id: teamId,
         teamName: savedTeamData.teamName,
@@ -324,6 +309,7 @@ const TeamInfoPage: React.FC = () => {
         teamLogo: savedTeamData.teamLogo || null,
         homeJersey: savedTeamData.homeJersey || null,
         awayJersey: savedTeamData.awayJersey || null,
+        gender: savedTeamData.gender || teamFormData.gender,
         players: savedPlayers,
       };
 
@@ -334,8 +320,6 @@ const TeamInfoPage: React.FC = () => {
       setTimeout(() => {
         setIsSaved(false);
       }, 3000);
-
-      console.log('球队信息和球员数据已成功保存到后端:', team);
     } catch (err) {
       console.error('保存球队信息失败:', err);
       if (err instanceof Error) {
