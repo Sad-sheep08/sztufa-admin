@@ -15,11 +15,11 @@ import NewsManagementPage from './pages/NewsManagementPage';
 const navItems = [
   { path: '/', label: '球队信息录入', icon: Trophy },
   { path: '/teams', label: '比赛信息录入', icon: Calendar },
-  { path: '/schedule', label: '球队信息管理', icon: Users },
-  { path: '/statistics', label: '比赛信息管理', icon: BarChart3 },
+  { path: '/schedule', label: '球队与球员管理', icon: Users },
+  { path: '/statistics', label: '比赛结果管理', icon: BarChart3 },
   { path: '/news', label: '活动资讯管理', icon: FileText },
   { path: '/audit-logs', label: '操作审计日志', icon: ShieldAlert },
-  { path: '/settings', label: '数据安全备份', icon: Database },
+  { path: '/settings', label: '系统设置与管理', icon: Database },
 ];
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
