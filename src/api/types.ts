@@ -136,3 +136,7 @@ export interface BackupDTO {
   lastModified: string;
   downloadUrl: string;
 }
+
+export const validateResponse = (response: ApiResponse | ErrorResponse): response is ApiResponse => {
+  return 'data' in response && 'message' in response;
+};
