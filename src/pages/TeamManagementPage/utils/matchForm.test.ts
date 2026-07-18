@@ -1,5 +1,5 @@
 import { MatchFormData } from '../../../types';
-import { buildMatchDto, validateMatchForm } from './matchForm';
+import { buildMatchDto, filterTeamsForGroup, validateMatchForm } from './matchForm';
 
 const createValidForm = (): MatchFormData => ({
   matchName: 'Home vs Away',
@@ -34,6 +34,24 @@ const createValidForm = (): MatchFormData => ({
 });
 
 describe('match form helpers', () => {
+  it('falls back to all season teams when cup groups are not configured', () => {
+    const teams = [
+      { id: 'team-1', teamName: 'Team 1' },
+      { id: 'team-2', teamName: 'Team 2' },
+    ] as any[];
+
+    expect(filterTeamsForGroup(teams, [], 'A')).toEqual(teams);
+  });
+
+  it('filters teams when cup group assignments exist', () => {
+    const teams = [
+      { id: 'team-1', teamName: 'Team 1' },
+      { id: 'team-2', teamName: 'Team 2' },
+    ] as any[];
+
+    expect(filterTeamsForGroup(teams, [{ teamId: 'team-2', groupName: 'A' }], 'A'))
+      .toEqual([teams[1]]);
+  });
   it('validates a consistent match form', () => {
     expect(validateMatchForm(createValidForm())).toBeNull();
   });

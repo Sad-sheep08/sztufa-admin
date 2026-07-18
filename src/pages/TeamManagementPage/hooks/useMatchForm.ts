@@ -3,7 +3,7 @@ import { Goal, MatchFormData, Match, MatchEvent } from '../../../types';
 import { generateId } from '../../../utils';
 import { matchApi, teamApi, seasonApi } from '../../../api/service';
 import { TeamDTO, PlayerDTO } from '../../../api/types';
-import { buildMatchDto, MatchLineup, validateMatchForm } from '../utils/matchForm';
+import { buildMatchDto, filterTeamsForGroup, MatchLineup, validateMatchForm } from '../utils/matchForm';
 
 export const useMatchForm = () => {
   const [formData, setFormData] = useState<MatchFormData>({
@@ -55,9 +55,9 @@ export const useMatchForm = () => {
     setLineups(updatedLineups);
   };
 
-  const loadTeams = async () => {
+  const loadTeams = async (seasonId?: string) => {
     try {
-      const response = await teamApi.getAll();
+      const response = await teamApi.getAll(1, 100, seasonId);
       setAvailableTeams(response.data);
     } catch (err) {
       console.error('加载球队列表失败:', err);
@@ -88,6 +88,7 @@ export const useMatchForm = () => {
         const defaultSeason = actives[0];
         setActiveSeason(defaultSeason);
         setFormData(prev => ({ ...prev, seasonId: defaultSeason.id }));
+        await loadTeams(defaultSeason.id);
         
         if (defaultSeason.type === 'CUP') {
           const groups = await seasonApi.getGroups(defaultSeason.id);
@@ -107,6 +108,7 @@ export const useMatchForm = () => {
     if (!selected) return;
 
     setActiveSeason(selected);
+    await loadTeams(seasonId);
     setFormData(prev => ({
       ...prev,
       seasonId,
@@ -136,10 +138,7 @@ export const useMatchForm = () => {
   const getFilteredTeams = () => {
     if (activeSeason?.type === 'CUP' && formData.stage === 'GROUP') {
       const gName = formData.groupName || 'A';
-      const groupTeamIds = seasonGroups
-        .filter(g => g.groupName === gName)
-        .map(g => g.teamId);
-      return availableTeams.filter(t => groupTeamIds.includes(t.id));
+      return filterTeamsForGroup(availableTeams, seasonGroups, gName);
     }
     return availableTeams;
   };
