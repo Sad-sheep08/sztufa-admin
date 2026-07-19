@@ -4,8 +4,12 @@ import { PlayerDTO } from '../../../api/types';
 import { Match } from '../../../types';
 import { mapMatchDto } from '../utils/matchEditor';
 
+const PAGE_SIZE = 10;
+
 export const useMatchData = () => {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalMatches, setTotalMatches] = useState(0);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,12 +35,13 @@ export const useMatchData = () => {
     void loadSeasons();
   }, []);
 
-  const loadMatches = useCallback(async () => {
+  const loadMatches = useCallback(async (page = currentPage) => {
     setIsLoading(true);
     try {
-      const response = await matchApi.getAll(1, 100, undefined, selectedSeasonId);
+      const response = await matchApi.getAll(page, PAGE_SIZE, undefined, selectedSeasonId);
       const matchList = response.data.map(mapMatchDto);
       setMatches(matchList);
+      setTotalMatches(response.total);
       setSelectedMatch((previous) => {
         if (!previous) return null;
         return matchList.find((match) => match.id === previous.id) || previous;
@@ -51,7 +56,7 @@ export const useMatchData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSeasonId]);
+  }, [currentPage, selectedSeasonId]);
 
   useEffect(() => {
     if (seasonsLoaded) void loadMatches();
@@ -74,12 +79,29 @@ export const useMatchData = () => {
     }
   };
 
+  const changeSeason = (seasonId: string) => {
+    setSelectedSeasonId(seasonId);
+    setCurrentPage(1);
+    setSelectedMatch(null);
+  };
+
+  const changePage = (page: number) => {
+    const totalPages = Math.ceil(totalMatches / PAGE_SIZE);
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    setCurrentPage(page);
+  };
+
   const deleteMatch = async (matchId: string) => {
     if (!confirm('确定要删除这场比赛吗？')) return false;
     setIsLoading(true);
     try {
       await matchApi.delete(matchId);
-      void loadMatches();
+      const nextPage = matches.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      if (nextPage !== currentPage) {
+        setCurrentPage(nextPage);
+      } else {
+        await loadMatches(nextPage);
+      }
       if (selectedMatch?.id === matchId) setSelectedMatch(null);
       return true;
     } catch (deleteError) {
@@ -103,7 +125,11 @@ export const useMatchData = () => {
     awayTeamPlayers,
     seasons,
     selectedSeasonId,
-    setSelectedSeasonId,
+    currentPage,
+    totalMatches,
+    pageSize: PAGE_SIZE,
+    changeSeason,
+    changePage,
     loadMatches,
     loadTeamPlayers,
     deleteMatch,

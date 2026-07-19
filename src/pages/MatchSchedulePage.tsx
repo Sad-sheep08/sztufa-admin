@@ -9,8 +9,8 @@ const TeamViewEditPage: React.FC = () => {
   const {
     teams, selectedTeam, isEditing, isLoading, error, isSaved, saveProgress,
     editData, showImporter, allMatches, activeSeasonName,
-    seasons, filterSeasonId,
-    setFilterSeasonId, setShowImporter,
+    seasons, filterSeasonId, currentPage, totalTeams, pageSize,
+    handleSeasonChange, handlePageChange, setShowImporter,
     loadTeams, handleViewTeam, handleEditTeam, handleSaveEdit,
     handleDeleteTeam, handleCancelEdit, handleFieldChange,
     handlePlayerFieldChange, handleDeletePlayerRow, handleAddPlayerRow,
@@ -43,10 +43,14 @@ const TeamViewEditPage: React.FC = () => {
           filterSeasonId={filterSeasonId}
           selectedTeam={selectedTeam}
           isLoading={isLoading}
+          currentPage={currentPage}
+          total={totalTeams}
+          pageSize={pageSize}
           userRole={user?.role}
           userTeamId={user?.teamId}
-          onSeasonChange={setFilterSeasonId}
-          onRefresh={() => loadTeams(filterSeasonId)}
+          onSeasonChange={handleSeasonChange}
+          onPageChange={handlePageChange}
+          onRefresh={() => loadTeams(currentPage, filterSeasonId)}
           onViewTeam={handleViewTeam}
           onEditTeam={handleEditTeam}
           onDeleteTeam={handleDeleteTeam}

@@ -5,8 +5,12 @@ import { Team, Player } from '../../../types';
 import { generateId } from '../../../utils';
 import * as XLSX from 'xlsx';
 
+const PAGE_SIZE = 10;
+
 export function useTeamData(user: any) {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTeams, setTotalTeams] = useState(0);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +47,10 @@ export function useTeamData(user: any) {
   }, []);
 
   useEffect(() => {
-    loadTeams(filterSeasonId);
+    loadTeams(currentPage, filterSeasonId);
+  }, [currentPage, filterSeasonId, seasons]);
+
+  useEffect(() => {
     if (filterSeasonId !== 'all') {
       loadActiveSeasonAndMatchesForSeason(filterSeasonId);
     } else {
@@ -66,7 +73,7 @@ export function useTeamData(user: any) {
     }
   };
 
-  const loadTeams = async (seasonId = filterSeasonId) => {
+  const loadTeams = async (page = currentPage, seasonId = filterSeasonId) => {
     setIsLoading(true);
     try {
       let gender = 'MALE';
@@ -80,8 +87,8 @@ export function useTeamData(user: any) {
       }
 
       const response = await teamApi.getAll(
-        1,
-        200,
+        user?.role === 'coach' ? 1 : page,
+        user?.role === 'coach' ? 100 : PAGE_SIZE,
         seasonId === 'all' ? undefined : seasonId,
         gender === 'all' ? undefined : gender
       );
@@ -115,11 +122,13 @@ export function useTeamData(user: any) {
         const coachTeamId = user.teamId;
         const filteredTeams = teamList.filter(t => t.id === coachTeamId);
         setTeams(filteredTeams);
+        setTotalTeams(filteredTeams.length);
         if (filteredTeams.length > 0) {
           setSelectedTeam(filteredTeams[0]);
         }
       } else {
         setTeams(teamList);
+        setTotalTeams(response.total);
       }
     } catch (err) {
       console.error('加载球队列表失败:', err);
@@ -131,6 +140,20 @@ export function useTeamData(user: any) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSeasonChange = (seasonId: string) => {
+    setFilterSeasonId(seasonId);
+    setCurrentPage(1);
+    setSelectedTeam(null);
+    setEditData(null);
+    setIsEditing(false);
+  };
+
+  const handlePageChange = (page: number) => {
+    const totalPages = Math.ceil(totalTeams / PAGE_SIZE);
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    setCurrentPage(page);
   };
 
   const handleViewTeam = (team: Team) => {
@@ -385,7 +408,12 @@ export function useTeamData(user: any) {
     setIsLoading(true);
     try {
       await teamApi.delete(teamId);
-      loadTeams();
+      const nextPage = teams.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      if (nextPage !== currentPage) {
+        setCurrentPage(nextPage);
+      } else {
+        await loadTeams(nextPage, filterSeasonId);
+      }
       if (selectedTeam?.id === teamId) {
         setSelectedTeam(null);
         setEditData(null);
@@ -492,8 +520,8 @@ export function useTeamData(user: any) {
   return {
     teams, selectedTeam, isEditing, isLoading, error, isSaved, saveProgress,
     editData, showImporter, allMatches, activeSeasonId, activeSeasonName,
-    seasons, filterSeasonId,
-    setFilterSeasonId, setShowImporter, setError,
+    seasons, filterSeasonId, currentPage, totalTeams, pageSize: PAGE_SIZE,
+    handleSeasonChange, handlePageChange, setShowImporter, setError,
     loadTeams, handleViewTeam, handleEditTeam, handleSaveEdit,
     handleDeleteTeam, handleCancelEdit, handleFieldChange,
     handlePlayerFieldChange, handleDeletePlayerRow, handleAddPlayerRow,

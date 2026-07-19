@@ -46,9 +46,13 @@ const MatchViewEditPage: React.FC = () => {
           selectedSeasonId={data.selectedSeasonId}
           selectedMatch={data.selectedMatch}
           isLoading={data.isLoading}
+          currentPage={data.currentPage}
+          total={data.totalMatches}
+          pageSize={data.pageSize}
           canEdit={canEdit}
           isSuperAdmin={user?.role === 'super_admin'}
-          onSeasonChange={data.setSelectedSeasonId}
+          onSeasonChange={data.changeSeason}
+          onPageChange={data.changePage}
           onRefresh={data.loadMatches}
           onViewMatch={editor.viewMatch}
           onEditMatch={editor.editMatch}

@@ -1875,6 +1875,37 @@ body {
   margin-top: 16px;
 }
 
+.table-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.table-pagination-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.table-pagination-actions .add-btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: auto;
+  margin: 0;
+  padding: 6px 12px;
+}
+
+@media (max-width: 600px) {
+  .table-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .match-score-container {
   display: flex;
   align-items: center;
@@ -2398,5 +2429,3 @@ body {
     white-space: normal !important;
   }
 }
-
-

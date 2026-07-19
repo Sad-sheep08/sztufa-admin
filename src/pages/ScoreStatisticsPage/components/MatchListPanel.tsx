@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Edit2, Trash2, Eye, RefreshCw } from 'lucide-react';
 import { Match } from '../../../types';
+import { Pagination } from '../../../components/Pagination';
 
 interface MatchListPanelProps {
   matches: Match[];
@@ -8,9 +9,13 @@ interface MatchListPanelProps {
   selectedSeasonId: string;
   selectedMatch: Match | null;
   isLoading: boolean;
+  currentPage: number;
+  total: number;
+  pageSize: number;
   canEdit: boolean;
   isSuperAdmin: boolean;
   onSeasonChange: (seasonId: string) => void;
+  onPageChange: (page: number) => void;
   onRefresh: () => void;
   onViewMatch: (match: Match) => void;
   onEditMatch: (match: Match) => void;
@@ -43,9 +48,13 @@ export const MatchListPanel: React.FC<MatchListPanelProps> = ({
   selectedSeasonId,
   selectedMatch,
   isLoading,
+  currentPage,
+  total,
+  pageSize,
   canEdit,
   isSuperAdmin,
   onSeasonChange,
+  onPageChange,
   onRefresh,
   onViewMatch,
   onEditMatch,
@@ -144,6 +153,12 @@ export const MatchListPanel: React.FC<MatchListPanelProps> = ({
               })}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, Eye, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { Team } from '../../../types';
+import { Pagination } from '../../../components/Pagination';
 
 interface TeamListPanelProps {
   teams: Team[];
@@ -8,9 +9,13 @@ interface TeamListPanelProps {
   filterSeasonId: string;
   selectedTeam: Team | null;
   isLoading: boolean;
+  currentPage: number;
+  total: number;
+  pageSize: number;
   userRole?: string;
   userTeamId?: string;
   onSeasonChange: (seasonId: string) => void;
+  onPageChange: (page: number) => void;
   onRefresh: () => void;
   onViewTeam: (team: Team) => void;
   onEditTeam: (team: Team) => void;
@@ -19,8 +24,8 @@ interface TeamListPanelProps {
 
 export const TeamListPanel: React.FC<TeamListPanelProps> = ({
   teams, seasons, filterSeasonId, selectedTeam,
-  isLoading, userRole, userTeamId,
-  onSeasonChange, onRefresh, onViewTeam, onEditTeam, onDeleteTeam,
+  isLoading, currentPage, total, pageSize, userRole, userTeamId,
+  onSeasonChange, onPageChange, onRefresh, onViewTeam, onEditTeam, onDeleteTeam,
 }) => {
   return (
     <div className="form-section">
@@ -97,6 +102,12 @@ export const TeamListPanel: React.FC<TeamListPanelProps> = ({
               ))}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
     </div>
