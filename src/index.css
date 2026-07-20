@@ -2429,3 +2429,517 @@ body {
     white-space: normal !important;
   }
 }
+
+/* P1-4: 错误页面样式 */
+.error-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.error-container {
+  text-align: center;
+  background: white;
+  border-radius: 16px;
+  padding: 60px 40px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.error-icon {
+  margin-bottom: 24px;
+  color: #667eea;
+}
+
+.error-code {
+  font-size: 72px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 16px 0;
+  line-height: 1;
+}
+
+.error-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 16px 0;
+}
+
+.error-message {
+  font-size: 16px;
+  color: #718096;
+  margin: 0 0 32px 0;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.error-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.error-button-primary {
+  background: #667eea;
+  color: white;
+}
+
+.error-button-primary:hover {
+  background: #5a67d8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.error-button-secondary {
+  background: #edf2f7;
+  color: #4a5568;
+}
+
+.error-button-secondary:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .error-container {
+    padding: 40px 20px;
+  }
+  
+  .error-code {
+    font-size: 56px;
+  }
+  
+  .error-title {
+    font-size: 20px;
+  }
+  
+  .error-message {
+    font-size: 14px;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+  }
+  
+  .error-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* P1-5: 统一弹窗样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.dialog-container {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: dialog-enter 0.2s ease-out;
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 0 20px;
+}
+
+.dialog-icon {
+  flex-shrink: 0;
+}
+
+.dialog-title {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #718096;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.dialog-close:hover {
+  background: #edf2f7;
+  color: #4a5568;
+}
+
+.dialog-body {
+  padding: 16px 20px;
+}
+
+.dialog-message {
+  margin: 0;
+  font-size: 14px;
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dialog-button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+}
+
+.dialog-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dialog-button-cancel {
+  background: #edf2f7;
+  color: #4a5568;
+}
+
+.dialog-button-cancel:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.dialog-button-confirm {
+  color: white;
+}
+
+.dialog-button-confirm:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Toast 样式 */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 300px;
+  max-width: 500px;
+  animation: toast-enter 0.3s ease-out;
+}
+
+.toast-enter {
+  animation: toast-enter 0.3s ease-out;
+}
+
+.toast-exit {
+  animation: toast-exit 0.3s ease-in;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.toast-icon {
+  flex-shrink: 0;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  border-radius: 4px;
+}
+
+.toast-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .dialog-container {
+    margin: 10px;
+  }
+  
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .toast {
+    min-width: auto;
+    max-width: none;
+  }
+}
+
+/* P1-6: 统一加载、空数据和错误状态样式 */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 12px;
+}
+
+.loading-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 1000;
+}
+
+.spinner-icon {
+  animation: spin 1s linear infinite;
+  color: #667eea;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  color: #a0aec0;
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.empty-state-message {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #718096;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.empty-state-action {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.empty-state-action:hover {
+  background: #5a67d8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.error-state-icon {
+  margin-bottom: 16px;
+}
+
+.error-state-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.error-state-message {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #718096;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.error-state-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #edf2f7;
+  color: #4a5568;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error-state-retry:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .loading-spinner,
+  .empty-state,
+  .error-state {
+    padding: 40px 20px;
+  }
+  
+  .empty-state-title,
+  .error-state-title {
+    font-size: 16px;
+  }
+  
+  .empty-state-message,
+  .error-state-message {
+    font-size: 13px;
+  }
+}

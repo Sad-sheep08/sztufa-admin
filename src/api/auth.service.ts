@@ -1,4 +1,4 @@
-import { AuthResponse } from './types';
+import { AuthResponse, AuthUser } from './types';
 import { BASE_URL, createHeaders, handleResponse } from './http';
 
 export const authApi = {
@@ -14,16 +14,23 @@ export const authApi = {
     return handleResponse<AuthResponse>(response);
   },
 
-  register: async (credentials: { username: string; password: string; role?: string; teamId?: string }): Promise<AuthResponse> => {
-    const headers = new Headers();
-    headers.set('Content-Type', 'application/json');
-    
+  // 管理员创建用户（需要携带 Token）
+  createUser: async (credentials: { username: string; password: string; role?: string; teamId?: string }): Promise<AuthResponse> => {
     const response = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
-      headers,
+      headers: createHeaders(),
       body: JSON.stringify(credentials),
     });
     return handleResponse<AuthResponse>(response);
+  },
+
+  // 获取当前登录用户信息
+  getCurrentUser: async (): Promise<AuthUser> => {
+    const response = await fetch(`${BASE_URL}/auth/me`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    return handleResponse<AuthUser>(response);
   },
 };
 

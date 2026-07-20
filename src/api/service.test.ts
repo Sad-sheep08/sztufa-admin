@@ -494,19 +494,19 @@ describe('API Service Tests', () => {
       expect(result).toEqual(mockLoginResponse);
     });
 
-    it('register should send POST request with username, password and optional role', async () => {
-      const mockRegisterResponse = {
+    it('createUser should send POST request with username, password and optional role', async () => {
+      const mockCreateUserResponse = {
         user: { id: 'clx1234567890', username: 'admin', role: 'admin', createdAt: '2024-01-15T10:00:00.000Z' },
-        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        token: 'eyJhbG...VCJ9...',
       };
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 201,
-        json: jest.fn().mockResolvedValueOnce(mockRegisterResponse),
+        json: jest.fn().mockResolvedValueOnce(mockCreateUserResponse),
       });
 
-      const result = await authApi.register({ username: 'admin', password: 'password123', role: 'admin' });
+      const result = await authApi.createUser({ username: 'admin', password: 'password123', role: 'admin' });
 
       expect(fetch).toHaveBeenCalledWith(
         'https://api.sztufa.xyz/api/v1/auth/register',
@@ -516,7 +516,7 @@ describe('API Service Tests', () => {
           body: JSON.stringify({ username: 'admin', password: 'password123', role: 'admin' }),
         }
       );
-      expect(result).toEqual(mockRegisterResponse);
+      expect(result).toEqual(mockCreateUserResponse);
     });
 
     it('login should throw error for invalid credentials', async () => {

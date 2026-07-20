@@ -1,12 +1,33 @@
 export const BASE_URL = typeof window !== 'undefined' && !window.location.hostname.endsWith('sztufa.xyz') ? '/api/v1' : 'https://api.sztufa.xyz/api/v1';
 
+// P1-3: 统一的 Token 管理函数
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('token') || null;
+  // P1-1: 优先从 localStorage 读取，然后从 sessionStorage
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+};
+
+export const setAuthToken = (token: string): void => {
+  localStorage.setItem('token', token);
+};
+
+export const removeAuthToken = (): void => {
+  localStorage.removeItem('token');
+  sessionStorage.removeItem('token');
 };
 
 export const getTokenExpiry = (): number | null => {
-  const expiry = localStorage.getItem('tokenExpiry');
+  // P1-1: 优先从 localStorage 读取，然后从 sessionStorage
+  const expiry = localStorage.getItem('tokenExpiry') || sessionStorage.getItem('tokenExpiry');
   return expiry ? parseInt(expiry, 10) : null;
+};
+
+export const setTokenExpiry = (expiry: number): void => {
+  localStorage.setItem('tokenExpiry', expiry.toString());
+};
+
+export const removeTokenExpiry = (): void => {
+  localStorage.removeItem('tokenExpiry');
+  sessionStorage.removeItem('tokenExpiry');
 };
 
 export const isTokenExpired = (): boolean => {
@@ -17,9 +38,12 @@ export const isTokenExpired = (): boolean => {
 
 export const handleAuthError = (response: Response): void => {
   if (response.status === 401) {
+    // P1-3: 清理所有可能的存储位置
     localStorage.removeItem('token');
     localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('tokenExpiry');
     window.location.href = '/login?expired=true';
   }
 };

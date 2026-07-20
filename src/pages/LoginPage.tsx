@@ -85,7 +85,7 @@ const LoginPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      await login(username, password);
+      await login(username, password, rememberMe);
       navigate('/');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : '登录失败，请稍后重试');
@@ -107,7 +107,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           {(submitError || authError || tokenExpired) && (
-            <div className="auth-alert auth-alert-error">
+            <div className="auth-alert auth-alert-error" role="alert">
               <AlertCircle size={18} />
               <span>{tokenExpired ? '登录已过期，请重新登录' : (submitError || authError)}</span>
             </div>
@@ -127,9 +127,11 @@ const LoginPage: React.FC = () => {
                 placeholder="请输入用户名或邮箱"
                 disabled={isSubmitting}
                 autoComplete="username"
+                aria-describedby={errors.username ? 'username-error' : undefined}
+                aria-invalid={!!errors.username}
               />
               {errors.username && (
-                <span className="error-message">{errors.username}</span>
+                <span id="username-error" className="error-message" role="alert">{errors.username}</span>
               )}
             </div>
 
@@ -147,19 +149,21 @@ const LoginPage: React.FC = () => {
                   placeholder="请输入密码"
                   disabled={isSubmitting}
                   autoComplete="current-password"
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  aria-invalid={!!errors.password}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
                   aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               {errors.password && (
-                <span className="error-message">{errors.password}</span>
+                <span id="password-error" className="error-message" role="alert">{errors.password}</span>
               )}
             </div>
 
@@ -174,15 +178,17 @@ const LoginPage: React.FC = () => {
                 <span className="checkbox-custom"></span>
                 记住我
               </label>
-              <Link to="/forgot-password" className="forgot-password-link">
-                忘记密码？
-              </Link>
+              {/* P0-3: 移除死链接，改为提示文本 */}
+              <span className="forgot-password-hint" style={{ color: '#888', fontSize: '0.85em' }}>
+                密码重置请联系超级管理员
+              </span>
             </div>
 
             <button
               type="submit"
               className="auth-submit-btn"
               disabled={isSubmitting || isLoading}
+              aria-busy={isSubmitting || isLoading}
             >
               {isSubmitting || isLoading ? (
                 <>
@@ -194,13 +200,6 @@ const LoginPage: React.FC = () => {
               )}
             </button>
           </form>
-
-          <div className="auth-footer">
-            <p>
-              还没有账户？{' '}
-              <Link to="/register" className="auth-link">立即注册</Link>
-            </p>
-          </div>
 
           {/* API 联调诊断面板 (仅在局域网/本地环境展示) */}
           {!window.location.hostname.endsWith('sztufa.xyz') && (

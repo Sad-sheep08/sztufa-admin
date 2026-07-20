@@ -16,6 +16,32 @@ export const useUserManagement = (teams: TeamDTO[], enabled: boolean) => {
   const [userError, setUserError] = useState<string | null>(null);
   const [userSuccess, setUserSuccess] = useState<string | null>(null);
 
+  // 确认弹窗状态
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger',
+  });
+
+  // 密码重置弹窗状态
+  const [passwordDialog, setPasswordDialog] = useState<{
+    isOpen: boolean;
+    userId: string;
+    username: string;
+  }>({
+    isOpen: false,
+    userId: '',
+    username: '',
+  });
+
   const loadUsers = useCallback(async () => {
     setIsUsersLoading(true);
     setUserError(null);
@@ -88,37 +114,55 @@ export const useUserManagement = (teams: TeamDTO[], enabled: boolean) => {
   };
 
   const handleDeleteUser = async (userId: string, username: string) => {
-    if (!confirm(`【警告】确定要永久删除用户账号"${username}"吗？此操作无法恢复！`)) return;
-    setUserError(null);
-    setUserSuccess(null);
-    try {
-      await userApi.delete(userId);
-      setUserSuccess('用户账号已删除');
-      loadUsers();
-      setTimeout(() => setUserSuccess(null), 3000);
-    } catch (error) {
-      console.error('删除用户失败:', error);
-      setUserError(error instanceof Error ? error.message : '删除用户失败');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: '删除用户',
+      message: `【警告】确定要永久删除用户账号"${username}"吗？此操作无法恢复！`,
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setUserError(null);
+        setUserSuccess(null);
+        try {
+          await userApi.delete(userId);
+          setUserSuccess('用户账号已删除');
+          loadUsers();
+          setTimeout(() => setUserSuccess(null), 3000);
+        } catch (error) {
+          console.error('删除用户失败:', error);
+          setUserError(error instanceof Error ? error.message : '删除用户失败');
+        }
+      },
+    });
   };
 
   const handleResetPassword = async (userId: string, username: string) => {
-    const newPass = prompt(`请输入为用户"${username}"设置的新密码（最少6个字符）：`);
-    if (newPass === null) return;
+    setPasswordDialog({
+      isOpen: true,
+      userId,
+      username,
+    });
+  };
+
+  const handlePasswordSubmit = async (newPass: string) => {
+    const { userId, username } = passwordDialog;
     const trimmedPass = newPass.trim();
     if (trimmedPass.length < 6) {
-      alert('重置密码失败：密码长度不能少于6个字符！');
+      setUserError('重置密码失败：密码长度不能少于6个字符！');
       return;
     }
+    
     setUserError(null);
     setUserSuccess(null);
     try {
       await userApi.resetPassword(userId, trimmedPass);
+      setPasswordDialog(prev => ({ ...prev, isOpen: false }));
       setUserSuccess(`已成功将用户"${username}"的密码重置为您输入的新密码！`);
       setTimeout(() => setUserSuccess(null), 3000);
     } catch (error) {
       console.error('重置密码失败:', error);
       setUserError(error instanceof Error ? error.message : '重置密码失败');
+      throw error;
     }
   };
 
@@ -132,7 +176,7 @@ export const useUserManagement = (teams: TeamDTO[], enabled: boolean) => {
     setUserError(null);
     setUserSuccess(null);
     try {
-      await authApi.register({
+      await authApi.createUser({
         username: newUsername,
         password: newPassword,
         role: newRole,
@@ -151,6 +195,14 @@ export const useUserManagement = (teams: TeamDTO[], enabled: boolean) => {
     } finally {
       setIsCreatingUser(false);
     }
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const closePasswordDialog = () => {
+    setPasswordDialog(prev => ({ ...prev, isOpen: false }));
   };
 
   return {
@@ -175,5 +227,10 @@ export const useUserManagement = (teams: TeamDTO[], enabled: boolean) => {
     handleDeleteUser,
     handleResetPassword,
     handleCreateUser,
+    handlePasswordSubmit,
+    closeConfirmDialog,
+    closePasswordDialog,
+    confirmDialog,
+    passwordDialog,
   };
 };

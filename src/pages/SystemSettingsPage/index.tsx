@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Database, FileCheck } from 'lucide-react';
 import { CupGroupPanel, SeasonBackupPanel, UserManagementPanel } from './components';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import PasswordDialog from '../../components/PasswordDialog';
 import {
   useCupGroupSettings,
   useSeasonBackupSettings,
@@ -183,7 +185,7 @@ const SystemSettingsPage: React.FC = () => {
           <div className="form-section" style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>
             <span style={{ fontSize: '48px' }}>🏆</span>
             <p style={{ marginTop: '16px', fontSize: '15px' }}>当前活跃赛季为<strong>联赛赛制</strong>，无需进行小组分配。</p>
-            <p style={{ fontSize: '13px' }}>如需管理杯赛分组，请先在“数据灾备与归档”页签中创建一个 CUP 类型的赛季并激活。</p>
+            <p style={{ fontSize: '13px' }}>如需管理杯赛分组，请先在"数据灾备与归档"页签中创建一个 CUP 类型的赛季并激活。</p>
           </div>
         )}
 
@@ -211,7 +213,28 @@ const SystemSettingsPage: React.FC = () => {
             onLoadUsers={userManagement.loadUsers}
           />
         )}
+
       </main>
+
+      {/* 确认删除弹窗 */}
+      <ConfirmDialog
+        isOpen={userManagement.confirmDialog.isOpen}
+        onClose={userManagement.closeConfirmDialog}
+        onConfirm={userManagement.confirmDialog.onConfirm}
+        title={userManagement.confirmDialog.title}
+        message={userManagement.confirmDialog.message}
+        type={userManagement.confirmDialog.type}
+        confirmText="确认删除"
+        cancelText="取消"
+      />
+
+      {/* 密码重置弹窗 */}
+      <PasswordDialog
+        isOpen={userManagement.passwordDialog.isOpen}
+        onClose={userManagement.closePasswordDialog}
+        onSubmit={userManagement.handlePasswordSubmit}
+        username={userManagement.passwordDialog.username}
+      />
     </div>
   );
 };
