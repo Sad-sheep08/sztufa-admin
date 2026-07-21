@@ -27,7 +27,6 @@ export function useTeamData(user: any) {
   const [seasons, setSeasons] = useState<any[]>([]);
   const [filterSeasonId, setFilterSeasonId] = useState<string>('all');
 
-  // 用于防止旧请求覆盖新数据
   const teamsRequestIdRef = useRef(0);
   const matchesRequestIdRef = useRef(0);
 
@@ -67,7 +66,6 @@ export function useTeamData(user: any) {
     try {
       const response = await matchApi.getAll(1, 200, undefined, seasonId === 'all' ? undefined : seasonId);
 
-      // 检查是否是最新的请求
       if (requestId !== matchesRequestIdRef.current) return;
 
       setAllMatches(response.data || []);
@@ -104,7 +102,6 @@ export function useTeamData(user: any) {
         gender === 'all' ? undefined : gender
       );
 
-      // 检查是否是最新的请求
       if (requestId !== teamsRequestIdRef.current) return;
 
       const teamList: Team[] = response.data.map((t: TeamDTO) => ({
@@ -283,12 +280,10 @@ export function useTeamData(user: any) {
     const originalPlayers = selectedTeam?.players || [];
     const currentPlayers = editData.players || [];
 
-    // 计算需要删除的球员 ID
     const deletePlayerIds = originalPlayers
       .filter(op => !currentPlayers.some(cp => cp.id === op.id))
       .map(p => p.id);
 
-    // 计算需要新增和更新的球员
     const playersPayload = currentPlayers.map(p => ({
       id: p.id.startsWith('temp_') ? undefined : p.id,
       name: p.name,
@@ -326,7 +321,6 @@ export function useTeamData(user: any) {
         message: '保存完成！正在重新加载数据...'
       });
 
-      // 将返回的球队数据映射回前端格式
       const mappedTeam: Team = {
         id: updatedTeam.id || editData.id,
         teamName: updatedTeam.teamName,

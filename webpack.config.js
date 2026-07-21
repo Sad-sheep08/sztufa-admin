@@ -7,8 +7,44 @@ module.exports = {
   entry: './src/index.tsx',
   output: {
     path: path.resolve(__dirname, 'build'),
-    filename: 'bundle.js',
+    filename: '[name].[contenthash:8].js',
     clean: true,
+  },
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+      cacheGroups: {
+        'vendor-xlsx': {
+          test: /[\\/]node_modules[\\/]xlsx[\\/]/,
+          name: 'vendor-xlsx',
+          chunks: 'all',
+          priority: 30,
+        },
+        'vendor-react': {
+          test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/,
+          name: 'vendor-react',
+          chunks: 'all',
+          priority: 20,
+        },
+        'vendor-lucide': {
+          test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+          name: 'vendor-lucide',
+          chunks: 'all',
+          priority: 20,
+        },
+        'vendor-common': {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendor-common',
+          chunks: 'all',
+          priority: 10,
+        },
+      },
+    },
+  },
+  performance: {
+    hints: 'warning',
+    maxAssetSize: 512000,
+    maxEntrypointSize: 512000,
   },
   module: {
     rules: [

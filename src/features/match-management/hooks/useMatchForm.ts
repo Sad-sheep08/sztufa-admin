@@ -291,7 +291,7 @@ export const useMatchForm = () => {
       const response = await matchApi.create(matchDTO);
 
       const savedData = response;
-       const match: Match = {
+      const match: Match = {
         id: savedData.id || generateId(),
         matchName: `${savedData.homeTeam?.teamName || '主队'} vs ${savedData.awayTeam?.teamName || '客队'}`,
         matchTime: savedData.matchDate,

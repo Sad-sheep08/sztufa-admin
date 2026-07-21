@@ -7,7 +7,7 @@ import LineupSection from './components/LineupSection';
 import EventTable from './components/EventTable';
 import SuccessToast from '../../components/SuccessToast';
 
-const TeamManagementPage: React.FC = () => {
+const MatchManagementPage: React.FC = () => {
   const {
     formData,
     setFormData,
@@ -58,7 +58,6 @@ const TeamManagementPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit}>
-
           <MatchBasicInfo
             formData={formData}
             activeSeasons={activeSeasons}
@@ -138,4 +137,4 @@ const TeamManagementPage: React.FC = () => {
   );
 };
 
-export default TeamManagementPage;
+export default MatchManagementPage;

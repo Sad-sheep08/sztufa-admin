@@ -29,7 +29,6 @@ export const TeamListPanel: React.FC<TeamListPanelProps> = ({
 }) => {
   return (
     <div className="form-section">
-      {/* 赛季筛选器 */}
       <div style={{ display: 'flex', gap: '15px', padding: '15px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa', borderRadius: '8px 8px 0 0' }}>
         <div className="form-group" style={{ margin: 0, flex: 1 }}>
           <label style={{ fontSize: '13px', fontWeight: 600, color: '#666', marginBottom: '4px', display: 'block' }}>按赛季筛选球队</label>

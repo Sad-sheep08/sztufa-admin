@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Upload, Image } from 'lucide-react';
-import { TeamFormData } from '../types';
-import { SeasonDTO } from '../api/types';
-import { validateImageFile } from '../utils/imageUpload';
+import { TeamFormData } from '../../../types';
+import { SeasonDTO } from '../../../api/types';
+import { validateImageFile } from '../../../utils/imageUpload';
 
 interface TeamFormProps {
   data: TeamFormData;

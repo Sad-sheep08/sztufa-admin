@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, User } from 'lucide-react';
-import { Player, PlayerFormData } from '../types';
-import { validateImageFile } from '../utils/imageUpload';
+import { Player, PlayerFormData } from '../../../types';
+import { validateImageFile } from '../../../utils/imageUpload';
 
 interface PlayerListProps {
   players: Player[];
