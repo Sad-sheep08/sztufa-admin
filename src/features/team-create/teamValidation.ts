@@ -29,9 +29,9 @@ export const validateTeamCreation = (
     if (!player.name.trim()) return `第 ${index + 1} 个球员的姓名不能为空`;
 
     const studentId = player.studentId.trim();
-    const jerseyNumber = String(player.jerseyNumber || '').trim();
+    const jerseyNumber = String(player.jerseyNumber ?? '').trim();
     if (!studentId) return `第 ${index + 1} 个球员的学号不能为空`;
-    if (!jerseyNumber) return `第 ${index + 1} 个球员的球衣号码不能为空`;
+    if (jerseyNumber === '') return `第 ${index + 1} 个球员的球衣号码不能为空`;
     if (studentIds.has(studentId)) return `球员列表中存在重复的学号: ${studentId}`;
     if (jerseyNumbers.has(jerseyNumber)) {
       return `球员列表中存在重复的球衣号码: ${jerseyNumber}`;
