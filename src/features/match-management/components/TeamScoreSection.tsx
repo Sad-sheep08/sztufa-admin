@@ -23,7 +23,6 @@ const TeamScoreSection: React.FC<TeamScoreSectionProps> = ({
 }) => {
   return (
     <>
-      {/* 杯赛属性设置 */}
       {activeSeason?.type === 'CUP' && (
         <div className="form-section" style={{ marginBottom: '20px' }}>
           <h2 className="form-title">
@@ -119,7 +118,6 @@ const TeamScoreSection: React.FC<TeamScoreSectionProps> = ({
         </div>
       )}
 
-      {/* 对阵球队 + 比分 */}
       <div className="form-section">
         <h2 className="form-title">
           <span className="icon">🏆</span>

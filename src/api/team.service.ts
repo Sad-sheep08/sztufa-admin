@@ -1,6 +1,8 @@
 import { CreateTeamWithPlayersDTO, TeamDTO, TeamListResponse, PlayerDTO } from './types';
 import { BASE_URL, createHeaders, handleResponse } from './http';
 
+type TeamPlayerUpdatePayload = Omit<PlayerDTO, 'teamId'> & { id?: string };
+
 export const teamApi = {
   createWithPlayers: async (teamData: CreateTeamWithPlayersDTO): Promise<TeamDTO> => {
     const response = await fetch(`${BASE_URL}/teams/with-players`, {
@@ -56,6 +58,33 @@ export const teamApi = {
       method: 'PATCH',
       headers: createHeaders(),
       body: JSON.stringify(teamData),
+    });
+    return handleResponse<TeamDTO>(response);
+  },
+
+  updateWithPlayers: async (
+    id: string,
+    data: {
+      teamName?: string;
+      teamDoctor?: string;
+      headCoach?: string;
+      teamLeader?: string;
+      coachPhone?: string;
+      leaderPhone?: string;
+      homeJerseyColor?: string;
+      awayJerseyColor?: string;
+      teamLogo?: string | null;
+      homeJersey?: string | null;
+      awayJersey?: string | null;
+      gender?: string;
+      players?: TeamPlayerUpdatePayload[];
+      deletePlayerIds?: string[];
+    }
+  ): Promise<TeamDTO> => {
+    const response = await fetch(`${BASE_URL}/teams/${id}/with-players`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify(data),
     });
     return handleResponse<TeamDTO>(response);
   },

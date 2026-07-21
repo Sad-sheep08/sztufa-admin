@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { teamApi, playerApi, matchApi, seasonApi } from '../../../api/service';
+import { useState, useEffect, useRef } from 'react';
+import { teamApi, matchApi, seasonApi } from '../../../api/service';
 import { TeamDTO, PlayerDTO, MatchDTO } from '../../../api/types';
 import { Team, Player } from '../../../types';
 import { generateId } from '../../../utils';
@@ -26,6 +26,9 @@ export function useTeamData(user: any) {
 
   const [seasons, setSeasons] = useState<any[]>([]);
   const [filterSeasonId, setFilterSeasonId] = useState<string>('all');
+
+  const teamsRequestIdRef = useRef(0);
+  const matchesRequestIdRef = useRef(0);
 
   useEffect(() => {
     const initPage = async () => {
@@ -59,8 +62,12 @@ export function useTeamData(user: any) {
   }, [filterSeasonId, seasons]);
 
   const loadActiveSeasonAndMatchesForSeason = async (seasonId: string) => {
+    const requestId = ++matchesRequestIdRef.current;
     try {
       const response = await matchApi.getAll(1, 200, undefined, seasonId === 'all' ? undefined : seasonId);
+
+      if (requestId !== matchesRequestIdRef.current) return;
+
       setAllMatches(response.data || []);
 
       const currentSeason = seasons.find(s => s.id === seasonId);
@@ -69,11 +76,13 @@ export function useTeamData(user: any) {
         setActiveSeasonName(currentSeason.name);
       }
     } catch (err) {
+      if (requestId !== matchesRequestIdRef.current) return;
       console.error('加载比赛记录失败:', err);
     }
   };
 
   const loadTeams = async (page = currentPage, seasonId = filterSeasonId) => {
+    const requestId = ++teamsRequestIdRef.current;
     setIsLoading(true);
     try {
       let gender = 'MALE';
@@ -92,6 +101,9 @@ export function useTeamData(user: any) {
         seasonId === 'all' ? undefined : seasonId,
         gender === 'all' ? undefined : gender
       );
+
+      if (requestId !== teamsRequestIdRef.current) return;
+
       const teamList: Team[] = response.data.map((t: TeamDTO) => ({
         id: t.id || generateId(),
         teamName: t.teamName,
@@ -131,6 +143,7 @@ export function useTeamData(user: any) {
         setTotalTeams(response.total);
       }
     } catch (err) {
+      if (requestId !== teamsRequestIdRef.current) return;
       console.error('加载球队列表失败:', err);
       if (err instanceof Error && err.message === 'Unauthorized') {
         setError('请先登录系统');
@@ -138,7 +151,9 @@ export function useTeamData(user: any) {
         setError('网络连接失败，请稍后重试');
       }
     } finally {
-      setIsLoading(false);
+      if (requestId === teamsRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -264,35 +279,26 @@ export function useTeamData(user: any) {
 
     const originalPlayers = selectedTeam?.players || [];
     const currentPlayers = editData.players || [];
-    const playersToDelete = originalPlayers.filter(
-      op => !currentPlayers.some(cp => cp.id === op.id)
-    );
-    const playersToCreate = [];
-    const playersToUpdate = [];
-    for (const p of currentPlayers) {
-      const original = originalPlayers.find(op => op.id === p.id);
-      if (!original) {
-        playersToCreate.push(p);
-      } else if (
-        original.name !== p.name ||
-        original.studentId !== p.studentId ||
-        original.jerseyNumber !== p.jerseyNumber ||
-        (original.status || 'active') !== (p.status || 'active') ||
-        Number(original.yellowCards || 0) !== Number(p.yellowCards || 0) ||
-        Number(original.redCards || 0) !== Number(p.redCards || 0) ||
-        original.photo !== p.photo
-      ) {
-        playersToUpdate.push(p);
-      }
-    }
 
-    const totalSteps = 1 + playersToDelete.length + playersToCreate.length + playersToUpdate.length;
-    let currentStep = 0;
+    const deletePlayerIds = originalPlayers
+      .filter(op => !currentPlayers.some(cp => cp.id === op.id))
+      .map(p => p.id);
+
+    const playersPayload = currentPlayers.map(p => ({
+      id: p.id.startsWith('temp_') ? undefined : p.id,
+      name: p.name,
+      studentId: p.studentId,
+      jerseyNumber: p.jerseyNumber,
+      status: p.status || 'active',
+      yellowCards: Number(p.yellowCards) || 0,
+      redCards: Number(p.redCards) || 0,
+      photo: p.photo || null,
+    }));
 
     try {
-      setSaveProgress({ current: currentStep, total: totalSteps, message: '正在更新球队基本信息...' });
+      setSaveProgress({ current: 0, total: 1, message: '正在提交变更...' });
 
-      const editTeamDTO = {
+      const updatedTeam = await teamApi.updateWithPlayers(editData.id, {
         teamName: editData.teamName,
         teamDoctor: editData.teamDoctor,
         headCoach: editData.headCoach,
@@ -305,75 +311,31 @@ export function useTeamData(user: any) {
         homeJersey: editData.homeJersey || null,
         awayJersey: editData.awayJersey || null,
         gender: editData.gender,
-      };
-
-      await teamApi.update(editData.id, editTeamDTO);
-      currentStep++;
-      setSaveProgress({ current: currentStep, total: totalSteps, message: '球队基本信息更新完成，开始同步球员数据...' });
-
-      for (const p of playersToDelete) {
-        setSaveProgress({
-          current: currentStep,
-          total: totalSteps,
-          message: `正在删除已移除的球员: ${p.name}...`
-        });
-        await playerApi.delete(p.id);
-        currentStep++;
-      }
-
-      for (const p of playersToCreate) {
-        setSaveProgress({
-          current: currentStep,
-          total: totalSteps,
-          message: `正在添加新球员: ${p.name} (学号 ${p.studentId})...`
-        });
-        const playerDTO = {
-          name: p.name,
-          studentId: p.studentId,
-          jerseyNumber: p.jerseyNumber,
-          status: p.status || 'active',
-          yellowCards: Number(p.yellowCards) || 0,
-          redCards: Number(p.redCards) || 0,
-          photo: p.photo || null,
-          teamId: editData.id,
-        };
-        await playerApi.create(playerDTO);
-        currentStep++;
-      }
-
-      for (const p of playersToUpdate) {
-        setSaveProgress({
-          current: currentStep,
-          total: totalSteps,
-          message: `正在更新球员数据: ${p.name}...`
-        });
-        const playerDTO = {
-          name: p.name,
-          studentId: p.studentId,
-          jerseyNumber: p.jerseyNumber,
-          status: p.status || 'active',
-          yellowCards: Number(p.yellowCards) || 0,
-          redCards: Number(p.redCards) || 0,
-          photo: p.photo || null,
-          teamId: editData.id,
-        };
-        await playerApi.update(p.id, playerDTO);
-        currentStep++;
-      }
-
-      setSaveProgress({
-        current: totalSteps,
-        total: totalSteps,
-        message: '同步完成！正在重新加载数据...'
+        players: playersPayload,
+        deletePlayerIds,
       });
 
-      setIsSaved(true);
-      setError(null);
+      setSaveProgress({
+        current: 1,
+        total: 1,
+        message: '保存完成！正在重新加载数据...'
+      });
 
-      const updatedPlayersResponse = await playerApi.getAll(1, 100, editData.id);
-      const updatedTeam = {
-        ...editData,
-        players: updatedPlayersResponse.data.map((p: PlayerDTO) => ({
+      const mappedTeam: Team = {
+        id: updatedTeam.id || editData.id,
+        teamName: updatedTeam.teamName,
+        teamDoctor: updatedTeam.teamDoctor,
+        headCoach: updatedTeam.headCoach,
+        teamLeader: updatedTeam.teamLeader,
+        coachPhone: updatedTeam.coachPhone,
+        leaderPhone: updatedTeam.leaderPhone,
+        homeJerseyColor: updatedTeam.homeJerseyColor,
+        awayJerseyColor: updatedTeam.awayJerseyColor,
+        teamLogo: updatedTeam.teamLogo || null,
+        homeJersey: updatedTeam.homeJersey || null,
+        awayJersey: updatedTeam.awayJersey || null,
+        gender: updatedTeam.gender || 'MALE',
+        players: updatedTeam.players?.map((p: PlayerDTO) => ({
           id: p.id || generateId(),
           name: p.name,
           studentId: p.studentId,
@@ -383,9 +345,12 @@ export function useTeamData(user: any) {
           yellowCards: p.yellowCards || 0,
           redCards: p.redCards || 0,
           teamId: p.teamId || '',
-        })),
+        })) || [],
       };
-      setSelectedTeam(updatedTeam);
+
+      setSelectedTeam(mappedTeam);
+      setIsSaved(true);
+      setError(null);
 
       loadTeams();
       setTimeout(() => {

@@ -21,7 +21,6 @@ export const filterTeamsForGroup = (
     .filter((assignment) => assignment.groupName === groupName)
     .map((assignment) => assignment.teamId);
 
-  // 生产赛季尚未配置小组成员时，允许从该赛季全部球队中选择。
   if (teamIds.length === 0) return teams;
   return teams.filter((team) => team.id && teamIds.includes(team.id));
 };

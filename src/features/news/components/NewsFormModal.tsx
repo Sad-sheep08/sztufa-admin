@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Loader2, Upload } from 'lucide-react';
-import { newsApi, uploadApi } from '../api/service';
-import { NewsDTO } from '../api/service';
+import { newsApi, uploadApi } from '../../../api/service';
+import { NewsDTO } from '../../../api/service';
 
 interface NewsFormModalProps {
   mode: 'create' | 'edit';

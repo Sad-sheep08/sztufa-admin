@@ -162,7 +162,6 @@ export const TeamDetailPanel: React.FC<TeamDetailPanelProps> = ({
         {renderField('主场球衣颜色', 'homeJerseyColor')}
         {renderField('客场球衣颜色', 'awayJerseyColor')}
 
-        {/* 图片上传区 */}
         <div className="form-row" style={{ gridColumn: 'span 3', display: 'flex', gap: '20px', marginTop: '15px' }}>
           <ImageUploadField
             label="队徽"
@@ -187,7 +186,6 @@ export const TeamDetailPanel: React.FC<TeamDetailPanelProps> = ({
           />
         </div>
 
-        {/* 赛季战绩（仅查看模式） */}
         {!isEditing && (
           <div className="form-group" style={{ gridColumn: 'span 3', marginTop: '10px' }}>
             <label>赛季数据与战绩走势{activeSeasonName ? `（${activeSeasonName}）` : ''}</label>

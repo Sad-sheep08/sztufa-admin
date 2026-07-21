@@ -1,15 +1,47 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
-const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:3001';
+const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://localhost:3001';
 
 module.exports = {
   entry: './src/index.tsx',
   output: {
     path: path.resolve(__dirname, 'build'),
-    filename: 'bundle.js',
+    filename: '[name].[contenthash:8].js',
     clean: true,
   },
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+      cacheGroups: {
+        'vendor-xlsx': {
+          test: /[\\/]node_modules[\\/]xlsx[\\/]/,
+          name: 'vendor-xlsx',
+          chunks: 'all',
+          priority: 30,
+        },
+        'vendor-react': {
+          test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/,
+          name: 'vendor-react',
+          chunks: 'all',
+          priority: 20,
+        },
+        'vendor-lucide': {
+          test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+          name: 'vendor-lucide',
+          chunks: 'all',
+          priority: 20,
+        },
+        'vendor-common': {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendor-common',
+          chunks: 'all',
+          priority: 10,
+        },
+      },
+    },
+  },
+  performance: false,
   module: {
     rules: [
       {
@@ -35,6 +67,12 @@ module.exports = {
     }),
   ],
   devServer: {
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
     static: {
       directory: path.join(__dirname, 'public'),
     },
@@ -49,6 +87,8 @@ module.exports = {
         context: ['/api'],
         target: apiProxyTarget,
         changeOrigin: true,
+        proxyTimeout: 30000,
+        timeout: 30000,
       }
     ],
   },
