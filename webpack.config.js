@@ -1,7 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
-const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:3001';
+const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://localhost:3001';
 
 module.exports = {
   entry: './src/index.tsx',
@@ -41,11 +41,7 @@ module.exports = {
       },
     },
   },
-  performance: {
-    hints: 'warning',
-    maxAssetSize: 512000,
-    maxEntrypointSize: 512000,
-  },
+  performance: false,
   module: {
     rules: [
       {
@@ -71,6 +67,12 @@ module.exports = {
     }),
   ],
   devServer: {
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
     static: {
       directory: path.join(__dirname, 'public'),
     },
@@ -85,6 +87,8 @@ module.exports = {
         context: ['/api'],
         target: apiProxyTarget,
         changeOrigin: true,
+        proxyTimeout: 30000,
+        timeout: 30000,
       }
     ],
   },

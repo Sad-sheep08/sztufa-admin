@@ -245,6 +245,7 @@ const AuditLogPage: React.FC = () => {
             </button>
           </div>
 
+          {/* 筛选过滤工具条 */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f8f9fa', padding: '12px 16px', borderRadius: '6px', marginBottom: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '13px', color: '#4a5568', fontWeight: 600 }}>操作人:</span>
@@ -284,37 +285,38 @@ const AuditLogPage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="player-table-wrapper">
+              {/* 桌面端表格 */}
+              <div className="player-table-wrapper desktop-audit-view">
                 <table className="player-table audit-logs-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '180px' }}>操作时间</th>
-                      <th style={{ width: '120px' }}>操作人员</th>
-                      <th style={{ width: '140px' }}>操作类型</th>
+                      <th style={{ width: '160px', whiteSpace: 'nowrap' }}>操作时间</th>
+                      <th style={{ width: '110px', whiteSpace: 'nowrap' }}>操作人员</th>
+                      <th style={{ width: '110px', whiteSpace: 'nowrap' }}>操作类型</th>
                       <th>具体行为描述</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logs.map((log) => (
                       <tr key={log.id}>
-                        <td data-label="操作时间" style={{ color: '#666', fontSize: '13px' }}>
+                        <td style={{ color: '#666', fontSize: '13px', whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                             <Calendar size={12} />
                             {formatDate(log.createdAt)}
                           </span>
                         </td>
-                        <td data-label="操作人员">
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
                             <User size={12} />
                             {log.username}
                           </span>
                         </td>
-                        <td data-label="操作类型">
-                          <span className={`badge ${getActionTagClass(log.action)}`}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span className={`badge ${getActionTagClass(log.action)}`} style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
                             {getActionLabel(log.action)}
                           </span>
                         </td>
-                        <td data-label="具体行为" style={{ fontSize: '14px', lineHeight: '1.4', color: '#333' }}>
+                        <td style={{ fontSize: '14px', lineHeight: '1.4', color: '#333' }}>
                           {renderDetails(log)}
                         </td>
                       </tr>
@@ -323,6 +325,31 @@ const AuditLogPage: React.FC = () => {
                 </table>
               </div>
 
+              {/* 移动端卡片列表 */}
+              <div className="mobile-audit-view">
+                {logs.map((log) => (
+                  <div key={log.id} className="mobile-audit-card">
+                    <div className="mobile-audit-card-header">
+                      <div className="mobile-audit-user-tag">
+                        <User size={12} />
+                        <span>{log.username}</span>
+                      </div>
+                      <span className={`badge ${getActionTagClass(log.action)}`} style={{ whiteSpace: 'nowrap' }}>
+                        {getActionLabel(log.action)}
+                      </span>
+                    </div>
+                    <div className="mobile-audit-time">
+                      <Calendar size={12} />
+                      <span>{formatDate(log.createdAt)}</span>
+                    </div>
+                    <div className="mobile-audit-body">
+                      {renderDetails(log)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 分页控制 */}
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px', color: '#666' }}>
                   第 {page} 页 / 共 {totalPages} 页
@@ -352,6 +379,69 @@ const AuditLogPage: React.FC = () => {
           )}
         </div>
       </main>
+
+      <style>{`
+        .desktop-audit-view {
+          display: block;
+        }
+        .mobile-audit-view {
+          display: none;
+        }
+        .audit-logs-table td {
+          vertical-align: top;
+          padding: 12px 14px;
+        }
+        .audit-logs-table .badge {
+          white-space: nowrap !important;
+          display: inline-block;
+        }
+        @media (max-width: 768px) {
+          .desktop-audit-view {
+            display: none;
+          }
+          .mobile-audit-view {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .mobile-audit-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+          }
+          .mobile-audit-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+          }
+          .mobile-audit-user-tag {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #2d3748;
+          }
+          .mobile-audit-time {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 8px;
+          }
+          .mobile-audit-body {
+            font-size: 13px;
+            color: #2d3748;
+            background: #f7fafc;
+            padding: 8px 10px;
+            border-radius: 6px;
+          }
+        }
+      `}</style>
     </div>
   );
 };
