@@ -204,7 +204,7 @@ const TeamScoreSection: React.FC<TeamScoreSectionProps> = ({
                 className="form-select team-select"
               >
                 <option value="">选择已有球队</option>
-                {availableTeams.map((team) => (
+                {getFilteredTeams().map((team) => (
                   <option key={team.id} value={team.id || ''}>
                     {team.teamName}
                   </option>

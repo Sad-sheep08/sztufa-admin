@@ -298,7 +298,8 @@ export function useTeamData(user: any) {
     try {
       setSaveProgress({ current: 0, total: 1, message: '正在提交变更...' });
 
-      const updatedTeam = await teamApi.updateWithPlayers(editData.id, {
+      let updatedTeam: TeamDTO;
+      const updatePayload = {
         teamName: editData.teamName,
         teamDoctor: editData.teamDoctor,
         headCoach: editData.headCoach,
@@ -311,9 +312,22 @@ export function useTeamData(user: any) {
         homeJersey: editData.homeJersey || null,
         awayJersey: editData.awayJersey || null,
         gender: editData.gender,
-        players: playersPayload,
-        deletePlayerIds,
-      });
+      };
+
+      try {
+        updatedTeam = await teamApi.updateWithPlayers(editData.id, {
+          ...updatePayload,
+          players: playersPayload,
+          deletePlayerIds,
+        });
+      } catch (patchErr: any) {
+        if (patchErr?.message?.includes('404') || patchErr?.message?.includes('Cannot PATCH')) {
+          console.warn('后端尚未支持 with-players 批量更新接口，降级调用基本信息更新接口');
+          updatedTeam = await teamApi.update(editData.id, updatePayload);
+        } else {
+          throw patchErr;
+        }
+      }
 
       setSaveProgress({
         current: 1,

@@ -17,11 +17,12 @@ export const filterTeamsForGroup = (
   assignments: SeasonGroupAssignment[],
   groupName: string,
 ): TeamDTO[] => {
+  if (!assignments || assignments.length === 0) return teams;
+
   const teamIds = assignments
     .filter((assignment) => assignment.groupName === groupName)
     .map((assignment) => assignment.teamId);
 
-  if (teamIds.length === 0) return teams;
   return teams.filter((team) => team.id && teamIds.includes(team.id));
 };
 

@@ -65,11 +65,32 @@ export const useMatchForm = () => {
   };
 
   const loadTeamPlayers = async (teamId: string, teamType: 'home' | 'away') => {
-    if (!teamId) return;
+    if (!teamId) {
+      if (teamType === 'home') setHomeTeamPlayers([]);
+      else setAwayTeamPlayers([]);
+      return;
+    }
     try {
-      const players = await teamApi.getPlayers(teamId);
-      // getPlayers 可能返回数组或 { data: [...] } 分页对象
-      const playerList = Array.isArray(players) ? players : (players as any)?.data ?? [];
+      const players = await teamApi.getPlayers(teamId, formData.seasonId || undefined);
+      let playerList = Array.isArray(players) ? players : (players as any)?.data ?? [];
+
+      // 若名册 API 返回空数组，触发多重兜底机制获取球队球员
+      if (playerList.length === 0) {
+        const cachedTeam = availableTeams.find(t => t.id === teamId);
+        if (cachedTeam?.players && cachedTeam.players.length > 0) {
+          playerList = cachedTeam.players;
+        } else {
+          try {
+            const fullTeam = await teamApi.getById(teamId);
+            if (fullTeam?.players && fullTeam.players.length > 0) {
+              playerList = fullTeam.players;
+            }
+          } catch (fetchErr) {
+            console.error('获取球队详情球员失败:', fetchErr);
+          }
+        }
+      }
+
       if (teamType === 'home') {
         setHomeTeamPlayers(playerList);
       } else {
@@ -77,7 +98,6 @@ export const useMatchForm = () => {
       }
     } catch (err) {
       console.error('加载球队球员失败:', err);
-      // 如果 roster API 失败（如无活跃赛季），尝试从 availableTeams 中获取缓存的球员数据
       const cachedTeam = availableTeams.find(t => t.id === teamId);
       if (cachedTeam?.players && cachedTeam.players.length > 0) {
         if (teamType === 'home') {
@@ -147,6 +167,18 @@ export const useMatchForm = () => {
     loadTeams();
     loadActiveSeasons();
   }, []);
+
+  useEffect(() => {
+    if (formData.homeTeamId) {
+      loadTeamPlayers(formData.homeTeamId, 'home');
+    }
+  }, [formData.homeTeamId, formData.seasonId, availableTeams]);
+
+  useEffect(() => {
+    if (formData.awayTeamId) {
+      loadTeamPlayers(formData.awayTeamId, 'away');
+    }
+  }, [formData.awayTeamId, formData.seasonId, availableTeams]);
 
   const getFilteredTeams = () => {
     if (activeSeason?.type === 'CUP' && formData.stage === 'GROUP') {
