@@ -53,9 +53,17 @@ const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImport }) => {
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           const players: Omit<Player, 'id'>[] = jsonData.map((row: any) => {
-            const rawName = row['姓名'] || row['name'] || '';
-            const rawStudentId = row['学号'] || row['studentId'] || row['student_id'] || '';
-            const rawJerseyNumber = row['球衣号码'] || row['jerseyNumber'] || row['jersey_number'] || '';
+            const rawName = row['姓名'] ?? row['name'] ?? '';
+            const rawStudentId = row['学号'] ?? row['studentId'] ?? row['student_id'] ?? '';
+            // 用 ?? 而非 || ，避免数字 0 被当做假値跳过
+            const rawJerseyNumber =
+              row['球衣号码'] !== undefined && row['球衣号码'] !== null
+                ? row['球衣号码']
+                : row['jerseyNumber'] !== undefined && row['jerseyNumber'] !== null
+                  ? row['jerseyNumber']
+                  : row['jersey_number'] !== undefined && row['jersey_number'] !== null
+                    ? row['jersey_number']
+                    : '';
 
             return {
               name: String(rawName).trim(),
@@ -67,7 +75,7 @@ const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImport }) => {
           });
 
           const validPlayers = players.filter(
-            (p) => p.name && p.studentId && p.jerseyNumber
+            (p) => p.name && p.studentId && p.jerseyNumber !== ''
           );
 
           if (validPlayers.length === 0) {

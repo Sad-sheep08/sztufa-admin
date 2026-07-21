@@ -252,12 +252,12 @@ export function useTeamData(user: any) {
           return;
         }
         const sId = p.studentId.trim();
-        const jNum = String(p.jerseyNumber || '').trim();
+        const jNum = String(p.jerseyNumber ?? '').trim();
         if (!sId) {
           setError(`第 ${i + 1} 个球员的学号不能为空`);
           return;
         }
-        if (!jNum) {
+        if (jNum === '') {
           setError(`第 ${i + 1} 个球员的球衣号码不能为空`);
           return;
         }
@@ -440,13 +440,13 @@ export function useTeamData(user: any) {
       let jerseyNumDupCount = 0;
 
       for (const p of importedPlayers) {
-        const sId = String(p.studentId).trim();
-        const jNum = String(p.jerseyNumber).trim();
+        const sId = String(p.studentId ?? '').trim();
+        const jNum = String(p.jerseyNumber ?? '').trim();
         if (mergedPlayers.some((mp) => mp.studentId === sId)) {
           studentIdDupCount++;
           continue;
         }
-        if (mergedPlayers.some((mp) => mp.jerseyNumber === jNum)) {
+        if (mergedPlayers.some((mp) => String(mp.jerseyNumber ?? '') === jNum)) {
           jerseyNumDupCount++;
           continue;
         }

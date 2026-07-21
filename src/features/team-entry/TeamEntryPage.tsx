@@ -83,12 +83,12 @@ const TeamEntryPage: React.FC = () => {
 
   const handleAddPlayer = (player: Omit<Player, 'id'>) => {
     const sId = String(player.studentId).trim();
-    const jNum = String(player.jerseyNumber).trim();
+    const jNum = String(player.jerseyNumber ?? '').trim();
     if (players.some((p) => p.studentId === sId)) {
       setError(`已存在学号为 ${sId} 的球员`);
       return;
     }
-    if (players.some((p) => p.jerseyNumber === jNum)) {
+    if (players.some((p) => String(p.jerseyNumber ?? '') === jNum)) {
       setError(`球衣号码 ${jNum} 在本队中已被占用`);
       return;
     }
@@ -114,13 +114,13 @@ const TeamEntryPage: React.FC = () => {
     let jerseyNumDupCount = 0;
 
     for (const p of importedPlayers) {
-      const sId = String(p.studentId).trim();
-      const jNum = String(p.jerseyNumber).trim();
+      const sId = String(p.studentId ?? '').trim();
+      const jNum = String(p.jerseyNumber ?? '').trim();
       if (mergedPlayers.some((mp) => mp.studentId === sId)) {
         studentIdDupCount++;
         continue;
       }
-      if (mergedPlayers.some((mp) => mp.jerseyNumber === jNum)) {
+      if (mergedPlayers.some((mp) => String(mp.jerseyNumber ?? '') === jNum)) {
         jerseyNumDupCount++;
         continue;
       }

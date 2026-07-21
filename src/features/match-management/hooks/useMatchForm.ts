@@ -68,13 +68,26 @@ export const useMatchForm = () => {
     if (!teamId) return;
     try {
       const players = await teamApi.getPlayers(teamId);
+      // getPlayers 可能返回数组或 { data: [...] } 分页对象
+      const playerList = Array.isArray(players) ? players : (players as any)?.data ?? [];
       if (teamType === 'home') {
-        setHomeTeamPlayers(players);
+        setHomeTeamPlayers(playerList);
       } else {
-        setAwayTeamPlayers(players);
+        setAwayTeamPlayers(playerList);
       }
     } catch (err) {
       console.error('加载球队球员失败:', err);
+      // 如果 roster API 失败（如无活跃赛季），尝试从 availableTeams 中获取缓存的球员数据
+      const cachedTeam = availableTeams.find(t => t.id === teamId);
+      if (cachedTeam?.players && cachedTeam.players.length > 0) {
+        if (teamType === 'home') {
+          setHomeTeamPlayers(cachedTeam.players);
+        } else {
+          setAwayTeamPlayers(cachedTeam.players);
+        }
+      } else {
+        setError('加载球队名单失败，请检查是否已有活跃赛季，或球队是否已录入球员名册');
+      }
     }
   };
 
