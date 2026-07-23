@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Trophy, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ValidationErrors } from '../types/auth';
+import { BASE_URL } from '../api/http';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -211,7 +212,7 @@ const LoginPage: React.FC = () => {
                 当前 Host: <code style={{ background: '#e9ecef', padding: '2px 4px', borderRadius: '3px' }}>{window.location.host}</code>
               </div>
               <div style={{ color: '#6c757d', marginBottom: '8px' }}>
-                API BASE_URL: <code style={{ background: '#e9ecef', padding: '2px 4px', borderRadius: '3px' }}>/api/v1</code>
+                API BASE_URL: <code style={{ background: '#e9ecef', padding: '2px 4px', borderRadius: '3px' }}>{BASE_URL}</code>
               </div>
               <button
                 type="button"
@@ -223,7 +224,7 @@ const LoginPage: React.FC = () => {
                     resultDiv.innerText = '';
                     try {
                       const start = Date.now();
-                      const res = await fetch('/api/v1/seasons/active');
+                      const res = await fetch(`${BASE_URL}/seasons/active`);
                       const responseText = await res.text();
 
                       if (!res.ok) {
