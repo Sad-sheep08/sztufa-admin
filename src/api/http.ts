@@ -1,4 +1,14 @@
-export const BASE_URL = typeof window !== 'undefined' && !window.location.hostname.endsWith('sztufa.xyz') ? '/api/v1' : 'https://api.sztufa.xyz/api/v1';
+declare const ADMIN_API_BASE_URL: string;
+
+const configuredApiBaseUrl = ADMIN_API_BASE_URL || '';
+
+export const BASE_URL = (
+  configuredApiBaseUrl ||
+  (typeof window !== 'undefined' &&
+  !window.location.hostname.endsWith('sztufa.xyz')
+    ? '/api/v1'
+    : 'https://api.sztufa.xyz/api/v1')
+).replace(/\/$/, '');
 
 // P1-3: 统一的 Token 管理函数
 export const getAuthToken = (): string | null => {
