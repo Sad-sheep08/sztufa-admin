@@ -2,6 +2,10 @@ import React from 'react';
 import { Calendar, Plus, Trash2 } from 'lucide-react';
 import { MatchEvent } from '../../../types';
 import { PlayerDTO } from '../../../api/types';
+import {
+  EVENT_TYPE_LABELS,
+  isShootoutEventType,
+} from '../../../utils/matchEvents';
 
 interface EventTableProps {
   teamType: 'home' | 'away';
@@ -71,14 +75,39 @@ const EventTable: React.FC<EventTableProps> = ({
                 return (
                   <tr key={index}>
                     <td data-label="时间">
-                      <input
-                        type="text"
-                        value={event.eventTime}
-                        onChange={(e) => updateEvent(index, 'eventTime', e.target.value)}
-                        className="form-input inline"
-                        placeholder="如：35'"
-                        required
-                      />
+                      {isShootoutEventType(event.eventType) ? (
+                        <div style={{ display: 'grid', gap: '4px' }}>
+                          <input
+                            type="number"
+                            min={1}
+                            value={event.shootoutRound || ''}
+                            onChange={(e) => updateEvent(index, 'shootoutRound', Number(e.target.value))}
+                            className="form-input inline"
+                            aria-label="点球大战轮次"
+                            placeholder="轮次"
+                            required
+                          />
+                          <input
+                            type="number"
+                            min={1}
+                            value={event.shootoutOrder || ''}
+                            onChange={(e) => updateEvent(index, 'shootoutOrder', Number(e.target.value))}
+                            className="form-input inline"
+                            aria-label="点球大战罚球顺序"
+                            placeholder="顺序"
+                            required
+                          />
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={event.eventTime}
+                          onChange={(e) => updateEvent(index, 'eventTime', e.target.value)}
+                          className="form-input inline"
+                          placeholder="如：35'"
+                          required
+                        />
+                      )}
                     </td>
                     <td data-label="事件类型">
                       <select
@@ -87,13 +116,9 @@ const EventTable: React.FC<EventTableProps> = ({
                         className="form-select inline"
                         required
                       >
-                        <option value="goal">⚽ 普通进球</option>
-                        <option value="penalty">🎯 点球</option>
-                        <option value="own_goal">🥅 乌龙球</option>
-                        <option value="substitution">🔄 换人</option>
-                        <option value="yellow_card">🟨 黄牌</option>
-                        <option value="red_card">🟥 红牌</option>
-                        <option value="yellow_to_red">🟨🟥 两黄变一红</option>
+                        {Object.entries(EVENT_TYPE_LABELS).map(([value, text]) => (
+                          <option key={value} value={value}>{text}</option>
+                        ))}
                       </select>
                     </td>
                     <td data-label="球员">

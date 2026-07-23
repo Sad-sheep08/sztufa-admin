@@ -1,6 +1,11 @@
 import { MatchDTO } from '../../../api/types';
 import { Match, MatchEvent } from '../../../types';
 import { generateId } from '../../../utils';
+import {
+  EVENT_DEFAULT_DESCRIPTIONS,
+  isShootoutEventType,
+  validateShootoutEvents,
+} from '../../../utils/matchEvents';
 
 export const mapMatchDto = (match: MatchDTO): Match => {
   const homeGoals = (match.goals || []).filter((goal) => goal.teamType === 'home');
@@ -13,6 +18,10 @@ export const mapMatchDto = (match: MatchDTO): Match => {
     awayTeamName: match.awayTeam?.teamName,
     homeScore: match.homeScore,
     awayScore: match.awayScore,
+    homePenaltyScore: match.homePenaltyScore,
+    awayPenaltyScore: match.awayPenaltyScore,
+    winnerTeamId: match.winnerTeamId,
+    decidedBy: match.decidedBy,
     homeTeamGoals: homeGoals,
     awayTeamGoals: awayGoals,
     events: match.events || [],
@@ -56,9 +65,20 @@ export const validateMatchEdit = (match: Match): string | null => {
   if (match.awayScore !== awayGoalsCount) {
     return `客队进球/点球/对方乌龙数(${awayGoalsCount})与客队得分(${match.awayScore})不一致`;
   }
+  const shootoutError = validateShootoutEvents(
+    events,
+    match.homeScore,
+    match.awayScore,
+  );
+  if (shootoutError) return shootoutError;
 
   for (const event of events) {
-    if (!event.eventTime || !event.eventTime.trim()) return '请填写所有事件的时间';
+    if (
+      !isShootoutEventType(event.eventType) &&
+      (!event.eventTime || !event.eventTime.trim())
+    ) {
+      return '请填写所有事件的时间';
+    }
     if (event.eventType === 'substitution') {
       if (!event.playerId) return '请选择换人事件的换上球员';
       if (!event.subPlayerId) return '请选择换人事件的换下球员';
@@ -92,20 +112,16 @@ const eventDescription = (event: MatchEvent) => {
   if (event.eventType === 'substitution') {
     return `换上 ${event.playerName} (${event.jerseyNumber}号)，换下 ${event.subPlayerName} (${event.subJerseyNumber}号)`;
   }
-  const descriptions: Partial<Record<MatchEvent['eventType'], string>> = {
-    own_goal: '乌龙球',
-    penalty: '点球',
-    penalty_shootout_goal: '点球大战进球',
-    penalty_shootout_miss: '点球大战飞点/罚失',
-    penalty_miss: '点球罚失',
-  };
-  return descriptions[event.eventType] || '进球';
+  return EVENT_DEFAULT_DESCRIPTIONS[event.eventType];
 };
 
 export const buildMatchUpdatePayload = (match: Match): Partial<MatchDTO> => {
   const events = (match.events || []).map((event) => ({
     eventTime: event.eventTime,
     eventType: event.eventType,
+    phase: event.phase || (isShootoutEventType(event.eventType) ? 'SHOOTOUT' : 'REGULAR'),
+    shootoutRound: event.shootoutRound,
+    shootoutOrder: event.shootoutOrder,
     description: eventDescription(event),
     teamType: event.teamType,
     playerId: event.playerId || null,

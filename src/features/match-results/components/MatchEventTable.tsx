@@ -2,13 +2,10 @@ import React from 'react';
 import { Plus, X } from 'lucide-react';
 import { PlayerDTO } from '../../../api/types';
 import { MatchEvent } from '../../../types';
-
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  goal: '⚽ 普通进球', penalty: '🎯 点球', own_goal: '🥅 乌龙球',
-  substitution: '🔄 换人', yellow_card: '🟨 黄牌', red_card: '🟥 红牌',
-  yellow_to_red: '🟨🟥 两黄变一红', penalty_shootout_goal: '🥅⚽ 点球大战进球',
-  penalty_shootout_miss: '🥅❌ 点球大战飞点/罚失', penalty_miss: '❌ 常规时间点球罚失',
-};
+import {
+  EVENT_TYPE_LABELS,
+  isShootoutEventType,
+} from '../../../utils/matchEvents';
 
 interface MatchEventTableProps {
   teamType: 'home' | 'away';
@@ -68,16 +65,45 @@ export const MatchEventTable: React.FC<MatchEventTableProps> = ({
                   <tr key={index}>
                     <td data-label="时间">
                       {isEditing ? (
-                        <input
-                          type="text"
-                          value={event.eventTime || ''}
-                          onChange={(e) => onEventChange(index, 'eventTime', e.target.value)}
-                          className="form-input inline"
-                          placeholder="如: 35'"
-                          required
-                        />
+                        isShootoutEventType(event.eventType) ? (
+                          <div style={{ display: 'grid', gap: '4px' }}>
+                            <input
+                              type="number"
+                              min={1}
+                              value={event.shootoutRound || ''}
+                              onChange={(e) => onEventChange(index, 'shootoutRound', Number(e.target.value))}
+                              className="form-input inline"
+                              aria-label="点球大战轮次"
+                              placeholder="轮次"
+                              required
+                            />
+                            <input
+                              type="number"
+                              min={1}
+                              value={event.shootoutOrder || ''}
+                              onChange={(e) => onEventChange(index, 'shootoutOrder', Number(e.target.value))}
+                              className="form-input inline"
+                              aria-label="点球大战罚球顺序"
+                              placeholder="顺序"
+                              required
+                            />
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={event.eventTime || ''}
+                            onChange={(e) => onEventChange(index, 'eventTime', e.target.value)}
+                            className="form-input inline"
+                            placeholder="如: 35'"
+                            required
+                          />
+                        )
                       ) : (
-                        <span>{event.eventTime}</span>
+                        <span>
+                          {isShootoutEventType(event.eventType)
+                            ? `第${event.shootoutRound || '-'}轮 / #${event.shootoutOrder || '-'}`
+                            : event.eventTime}
+                        </span>
                       )}
                     </td>
                     <td data-label="事件类型">

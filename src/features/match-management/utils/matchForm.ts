@@ -1,5 +1,10 @@
 import { MatchFormData } from '../../../types';
 import { MatchDTO, TeamDTO } from '../../../api/types';
+import {
+  EVENT_DEFAULT_DESCRIPTIONS,
+  isShootoutEventType,
+  validateShootoutEvents,
+} from '../../../utils/matchEvents';
 
 export interface MatchLineup {
   playerId: string;
@@ -61,9 +66,17 @@ export const validateMatchForm = (formData: MatchFormData): string | null => {
   if (awayScore !== awayGoalsCount) {
     return `客队进球/点球/对方乌龙数(${awayGoalsCount})与客队得分(${awayScore})不一致`;
   }
+  const shootoutError = validateShootoutEvents(
+    formData.events,
+    homeScore,
+    awayScore,
+  );
+  if (shootoutError) return shootoutError;
 
   for (const event of formData.events) {
-    if (!event.eventTime.trim()) return '请填写所有事件的时间';
+    if (!isShootoutEventType(event.eventType) && !event.eventTime.trim()) {
+      return '请填写所有事件的时间';
+    }
     if (event.eventType === 'substitution') {
       if (!event.playerId) return '请选择换人事件的换上球员';
       if (!event.subPlayerId) return '请选择换人事件的换下球员';
@@ -103,6 +116,9 @@ export const buildMatchDto = (
   const events = formData.events.map((event) => ({
     eventTime: event.eventTime,
     eventType: event.eventType,
+    phase: event.phase || (isShootoutEventType(event.eventType) ? 'SHOOTOUT' : 'REGULAR'),
+    shootoutRound: event.shootoutRound,
+    shootoutOrder: event.shootoutOrder,
     description: event.description || (
       event.eventType === 'substitution'
         ? `换上 ${event.playerName} (${event.jerseyNumber}号)，换下 ${event.subPlayerName} (${event.subJerseyNumber}号)`
@@ -110,7 +126,7 @@ export const buildMatchDto = (
           ? '乌龙球'
           : event.eventType === 'penalty'
             ? '点球'
-            : '进球'
+            : EVENT_DEFAULT_DESCRIPTIONS[event.eventType]
     ),
     teamType: event.teamType,
     playerId: event.playerId || null,

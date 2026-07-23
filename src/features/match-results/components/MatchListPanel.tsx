@@ -2,6 +2,7 @@ import React from 'react';
 import { Calendar, Edit2, Trash2, Eye, RefreshCw } from 'lucide-react';
 import { Match } from '../../../types';
 import { Pagination } from '../../../components/Pagination';
+import { getMatchPenaltyScore } from '../../../utils/matchEvents';
 
 interface MatchListPanelProps {
   matches: Match[];
@@ -115,6 +116,7 @@ export const MatchListPanel: React.FC<MatchListPanelProps> = ({
             <tbody>
               {matches.map((match) => {
                 const status = getMatchStatus(match);
+                const penaltyScore = getMatchPenaltyScore(match);
                 return (
                   <tr key={match.id} className={selectedMatch?.id === match.id ? 'selected' : ''}>
                     <td>{match.matchName}</td>
@@ -123,9 +125,16 @@ export const MatchListPanel: React.FC<MatchListPanelProps> = ({
                     <td className="team-name-cell away">{match.awayTeamName}</td>
                     <td>
                       <div className="score-cell">
-                        <span className="score-value home">{match.homeTeamScore}</span>
-                        <span className="score-separator">:</span>
-                        <span className="score-value away">{match.awayTeamScore}</span>
+                        <div className="regular-score-line">
+                          <span className="score-value home">{match.homeTeamScore}</span>
+                          <span className="score-separator">:</span>
+                          <span className="score-value away">{match.awayTeamScore}</span>
+                        </div>
+                        {penaltyScore && (
+                          <span className="penalty-score-inline">
+                            点球 {penaltyScore.home}-{penaltyScore.away}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td>

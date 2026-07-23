@@ -606,9 +606,24 @@ body {
 
 .score-cell {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.regular-score-line {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+.penalty-score-inline {
+  color: #00a653;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .score-value {
@@ -1914,6 +1929,24 @@ body {
   padding: 20px;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-radius: 12px;
+}
+
+.admin-penalty-score {
+  width: fit-content;
+  margin: 12px auto 0;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: rgba(0, 184, 92, 0.1);
+  color: #00a653;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-penalty-score strong {
+  font-size: 16px;
 }
 
 .team-column {

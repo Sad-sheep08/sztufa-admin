@@ -1,6 +1,7 @@
 import React from 'react';
 import { MatchFormData } from '../../../types';
 import { TeamDTO } from '../../../api/types';
+import { getPenaltyScoreFromEvents } from '../../../utils/matchEvents';
 
 interface TeamScoreSectionProps {
   formData: MatchFormData;
@@ -21,6 +22,8 @@ const TeamScoreSection: React.FC<TeamScoreSectionProps> = ({
   handleChange,
   handleTeamSelect,
 }) => {
+  const penaltyScore = getPenaltyScoreFromEvents(formData.events);
+
   return (
     <>
       {activeSeason?.type === 'CUP' && (
@@ -246,6 +249,12 @@ const TeamScoreSection: React.FC<TeamScoreSectionProps> = ({
             </div>
           </div>
         </div>
+        {penaltyScore && (
+          <div className="admin-penalty-score">
+            <span>点球大战</span>
+            <strong>{penaltyScore.home}-{penaltyScore.away}</strong>
+          </div>
+        )}
       </div>
     </>
   );

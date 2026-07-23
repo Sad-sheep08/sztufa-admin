@@ -1,6 +1,7 @@
 declare const ADMIN_API_BASE_URL: string;
 
-const configuredApiBaseUrl = ADMIN_API_BASE_URL || '';
+const configuredApiBaseUrl =
+  typeof ADMIN_API_BASE_URL !== 'undefined' ? ADMIN_API_BASE_URL : '';
 
 export const BASE_URL = (
   configuredApiBaseUrl ||

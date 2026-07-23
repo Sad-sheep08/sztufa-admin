@@ -68,6 +68,9 @@ export interface MatchEvent {
   id?: string;
   eventTime: string;
   eventType: 'goal' | 'own_goal' | 'penalty' | 'yellow_card' | 'red_card' | 'yellow_to_red' | 'substitution' | 'penalty_shootout_goal' | 'penalty_shootout_miss' | 'penalty_miss';
+  phase?: 'REGULAR' | 'EXTRA_TIME' | 'SHOOTOUT';
+  shootoutRound?: number;
+  shootoutOrder?: number;
   playerId?: string | null;
   playerName?: string | null;
   jerseyNumber?: string | null;
@@ -93,6 +96,10 @@ export interface Match {
   awayTeam?: Team;
   homeScore: number;
   awayScore: number;
+  homePenaltyScore?: number | null;
+  awayPenaltyScore?: number | null;
+  winnerTeamId?: string | null;
+  decidedBy?: 'REGULAR' | 'EXTRA_TIME' | 'PENALTIES' | null;
   homeTeamScore?: number;
   awayTeamScore?: number;
   homeTeamGoals: Goal[];

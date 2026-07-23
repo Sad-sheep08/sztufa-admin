@@ -81,6 +81,10 @@ export interface MatchDTO {
   awayTeamId: string;
   homeScore: number;
   awayScore: number;
+  homePenaltyScore?: number | null;
+  awayPenaltyScore?: number | null;
+  winnerTeamId?: string | null;
+  decidedBy?: 'REGULAR' | 'EXTRA_TIME' | 'PENALTIES' | null;
   matchDate: string;
   location: string;
   status?: 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'completed';

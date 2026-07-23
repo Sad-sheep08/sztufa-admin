@@ -4,6 +4,7 @@ import { Match, MatchEvent } from '../../../types';
 import { PlayerDTO } from '../../../api/types';
 import { MatchLineupPanel } from './MatchLineupPanel';
 import { MatchEventTable } from './MatchEventTable';
+import { getMatchPenaltyScore } from '../../../utils/matchEvents';
 
 interface MatchDetailPanelProps {
   selectedMatch: Match;
@@ -59,6 +60,8 @@ export const MatchDetailPanel: React.FC<MatchDetailPanelProps> = ({
 }) => {
   const currentSeason = seasons.find(s => s.id === (editData?.seasonId || selectedMatch?.seasonId || selectedSeasonId));
   const isCup = currentSeason?.type === 'CUP';
+  const displayedMatch = isEditing && editData ? editData : selectedMatch;
+  const penaltyScore = getMatchPenaltyScore(displayedMatch);
 
   return (
     <>
@@ -320,6 +323,12 @@ export const MatchDetailPanel: React.FC<MatchDetailPanelProps> = ({
             </div>
           </div>
         </div>
+        {penaltyScore && (
+          <div className="admin-penalty-score">
+            <span>点球大战</span>
+            <strong>{penaltyScore.home}-{penaltyScore.away}</strong>
+          </div>
+        )}
       </div>
 
       {/* 阵容配置面板 */}

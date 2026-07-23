@@ -4,6 +4,7 @@ import { generateId } from '../../../utils';
 import { matchApi, teamApi, seasonApi } from '../../../api/service';
 import { TeamDTO, PlayerDTO } from '../../../api/types';
 import { buildMatchDto, filterTeamsForGroup, MatchLineup, validateMatchForm } from '../utils/matchForm';
+import { applyEventTypeDefaults } from '../../../utils/matchEvents';
 
 export const useMatchForm = () => {
   const [formData, setFormData] = useState<MatchFormData>({
@@ -218,6 +219,11 @@ export const useMatchForm = () => {
     let newEvent = { ...updatedEvents[index], [field]: value } as MatchEvent;
     
     if (field === 'eventType') {
+      newEvent = applyEventTypeDefaults(
+        updatedEvents[index],
+        value as MatchEvent['eventType'],
+        updatedEvents,
+      );
       if (value !== 'goal') {
         newEvent.assistPlayerId = null;
         newEvent.assistPlayerName = null;
@@ -342,6 +348,10 @@ export const useMatchForm = () => {
         matchTime: savedData.matchDate,
         homeScore: savedData.homeScore,
         awayScore: savedData.awayScore,
+        homePenaltyScore: savedData.homePenaltyScore,
+        awayPenaltyScore: savedData.awayPenaltyScore,
+        winnerTeamId: savedData.winnerTeamId,
+        decidedBy: savedData.decidedBy,
         homeTeamGoals: [],
         awayTeamGoals: [],
         events: savedData.events || [],

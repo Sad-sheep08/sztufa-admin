@@ -3,6 +3,7 @@ import { matchApi } from '../../../api/service';
 import { PlayerDTO } from '../../../api/types';
 import { Match, MatchEvent } from '../../../types';
 import { buildMatchUpdatePayload, validateMatchEdit } from '../utils/matchEditor';
+import { applyEventTypeDefaults } from '../../../utils/matchEvents';
 
 interface MatchEditorOptions {
   setSelectedMatch: Dispatch<SetStateAction<Match | null>>;
@@ -94,8 +95,13 @@ export const useMatchEditor = ({
     setEditData((current) => {
       if (!current) return current;
       const events = [...(current.events || [])];
-      const nextEvent = { ...events[index], [field]: value } as MatchEvent;
+      let nextEvent = { ...events[index], [field]: value } as MatchEvent;
       if (field === 'eventType') {
+        nextEvent = applyEventTypeDefaults(
+          events[index],
+          value as MatchEvent['eventType'],
+          events,
+        );
         if (value !== 'goal') {
           nextEvent.assistPlayerId = null;
           nextEvent.assistPlayerName = null;
