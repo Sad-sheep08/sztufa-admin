@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, RefreshCw, Database, Download, RotateCcw, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, RefreshCw, Database, Download, RotateCcw, AlertTriangle, Pencil, Trash2, Check, X } from 'lucide-react';
 import { BackupDTO } from '../../../api/types';
 
 interface SeasonBackupPanelProps {
@@ -13,10 +13,14 @@ interface SeasonBackupPanelProps {
   isBackingUp: boolean;
   isRestoring: string | null;
   isUpdatingStatusId: string | null;
+  isRenamingSeasonId: string | null;
+  isDeletingSeasonId: string | null;
   onNewSeasonNameChange: (val: string) => void;
   onNewSeasonTypeChange: (val: string) => void;
   onCreateSeason: (e: React.FormEvent) => void;
   onUpdateSeasonStatus: (id: string, currentStatus: string) => void;
+  onRenameSeason: (id: string, currentName: string, newName: string) => Promise<void>;
+  onDeleteSeason: (id: string, name: string) => void;
   onCreateBackup: () => void;
   onRestoreBackup: (key: string) => void;
   onLoadBackups: () => void;
@@ -45,14 +49,42 @@ export const SeasonBackupPanel: React.FC<SeasonBackupPanelProps> = ({
   isBackingUp,
   isRestoring,
   isUpdatingStatusId,
+  isRenamingSeasonId,
+  isDeletingSeasonId,
   onNewSeasonNameChange,
   onNewSeasonTypeChange,
   onCreateSeason,
   onUpdateSeasonStatus,
+  onRenameSeason,
+  onDeleteSeason,
   onCreateBackup,
   onRestoreBackup,
   onLoadBackups,
 }) => {
+  const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null);
+  const [editingSeasonName, setEditingSeasonName] = useState('');
+  const [pendingDeleteSeasonId, setPendingDeleteSeasonId] = useState<string | null>(null);
+
+  const startRenaming = (id: string, name: string) => {
+    setEditingSeasonId(id);
+    setEditingSeasonName(name);
+  };
+
+  const cancelRenaming = () => {
+    setEditingSeasonId(null);
+    setEditingSeasonName('');
+  };
+
+  const saveSeasonName = async (id: string, currentName: string) => {
+    const newName = editingSeasonName.trim();
+    if (!newName || newName === currentName) {
+      cancelRenaming();
+      return;
+    }
+    await onRenameSeason(id, currentName, newName);
+    cancelRenaming();
+  };
+
   return (
     <>
       {/* 赛季重置与归档管理 */}
@@ -129,13 +161,29 @@ export const SeasonBackupPanel: React.FC<SeasonBackupPanelProps> = ({
                   <th>赛季名称</th>
                   <th>类型</th>
                   <th>状态</th>
-                  <th style={{ textAlign: 'center', width: '150px' }}>操作</th>
+                  <th style={{ textAlign: 'center', width: '300px' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {seasons.map((s) => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: '500', color: '#333' }}>{s.name}</td>
+                    <td style={{ fontWeight: '500', color: '#333' }}>
+                      {editingSeasonId === s.id ? (
+                        <input
+                          type="text"
+                          value={editingSeasonName}
+                          onChange={(event) => setEditingSeasonName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') void saveSeasonName(s.id, s.name);
+                            if (event.key === 'Escape') cancelRenaming();
+                          }}
+                          disabled={isRenamingSeasonId === s.id}
+                          className="season-input-field"
+                          style={{ minWidth: '180px' }}
+                          autoFocus
+                        />
+                      ) : s.name}
+                    </td>
                     <td style={{ color: '#666' }}>
                       {s.type === 'CUP' ? (
                         <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>🏆 杯赛</span>
@@ -151,6 +199,7 @@ export const SeasonBackupPanel: React.FC<SeasonBackupPanelProps> = ({
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => onUpdateSeasonStatus(s.id, s.status)}
                         disabled={isUpdatingStatusId === s.id}
@@ -183,6 +232,70 @@ export const SeasonBackupPanel: React.FC<SeasonBackupPanelProps> = ({
                           <>重新激活</>
                         )}
                       </button>
+                      {editingSeasonId === s.id ? (
+                        <>
+                          <button
+                            onClick={() => void saveSeasonName(s.id, s.name)}
+                            disabled={isRenamingSeasonId === s.id || !editingSeasonName.trim()}
+                            className="add-btn small"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', height: 'auto', background: '#00a389', color: '#fff' }}
+                          >
+                            {isRenamingSeasonId === s.id ? <RefreshCw size={12} className="spinning" /> : <Check size={12} />}
+                            保存
+                          </button>
+                          <button
+                            onClick={cancelRenaming}
+                            disabled={isRenamingSeasonId === s.id}
+                            className="add-btn small"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', height: 'auto' }}
+                          >
+                            <X size={12} />
+                            取消
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => startRenaming(s.id, s.name)}
+                          disabled={editingSeasonId !== null || isDeletingSeasonId === s.id}
+                          className="add-btn small"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', height: 'auto' }}
+                        >
+                          <Pencil size={12} />
+                          修改名称
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (pendingDeleteSeasonId === s.id) {
+                            onDeleteSeason(s.id, s.name);
+                            setPendingDeleteSeasonId(null);
+                          } else {
+                            setPendingDeleteSeasonId(s.id);
+                          }
+                        }}
+                        disabled={isDeletingSeasonId === s.id || isRenamingSeasonId === s.id}
+                        className="add-btn small"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', height: 'auto', background: '#d93838', color: '#fff', borderColor: '#d93838' }}
+                      >
+                        {isDeletingSeasonId === s.id ? <RefreshCw size={12} className="spinning" /> : <Trash2 size={12} />}
+                        {pendingDeleteSeasonId === s.id ? '确认永久删除' : '删除赛季'}
+                      </button>
+                      {pendingDeleteSeasonId === s.id && (
+                        <button
+                          onClick={() => setPendingDeleteSeasonId(null)}
+                          className="add-btn small"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', height: 'auto' }}
+                        >
+                          <X size={12} />
+                          取消删除
+                        </button>
+                      )}
+                      </div>
+                      {pendingDeleteSeasonId === s.id && (
+                        <div style={{ marginTop: '8px', color: '#d93838', fontSize: '12px' }}>
+                          将同时删除该赛季的比赛、阵容、进球、事件、名单和分组；球队、球员及其他赛季不受影响。
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

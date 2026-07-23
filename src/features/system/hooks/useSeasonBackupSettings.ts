@@ -14,6 +14,8 @@ export const useSeasonBackupSettings = ({ setError, setSuccessMessage }: SystemF
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const [seasons, setSeasons] = useState<SeasonSummary[]>([]);
   const [isUpdatingStatusId, setIsUpdatingStatusId] = useState<string | null>(null);
+  const [isRenamingSeasonId, setIsRenamingSeasonId] = useState<string | null>(null);
+  const [isDeletingSeasonId, setIsDeletingSeasonId] = useState<string | null>(null);
 
   const loadAllSeasons = useCallback(async () => {
     try {
@@ -46,6 +48,7 @@ export const useSeasonBackupSettings = ({ setError, setSuccessMessage }: SystemF
       setActiveSeason(data);
     } catch (error) {
       console.error('加载活跃赛季失败:', error);
+      setActiveSeason(null);
     }
   }, []);
 
@@ -99,6 +102,43 @@ export const useSeasonBackupSettings = ({ setError, setSuccessMessage }: SystemF
     }
   };
 
+  const handleRenameSeason = async (id: string, currentName: string, newName: string) => {
+    const name = newName.trim();
+    if (!name || name === currentName) return;
+
+    setIsRenamingSeasonId(id);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await seasonApi.rename(id, name);
+      setSuccessMessage(`赛季已重命名为“${name}”`);
+      await Promise.all([loadActiveSeason(), loadAllSeasons()]);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('修改赛季名称失败:', error);
+      setError(error instanceof Error ? error.message : '修改赛季名称失败');
+    } finally {
+      setIsRenamingSeasonId(null);
+    }
+  };
+
+  const handleDeleteSeason = async (id: string, name: string) => {
+    setIsDeletingSeasonId(id);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const response = await seasonApi.delete(id);
+      setSuccessMessage(`已删除赛季“${name}”及其 ${response.deleted?.matches ?? 0} 场比赛`);
+      await Promise.all([loadActiveSeason(), loadAllSeasons()]);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (error) {
+      console.error('删除赛季失败:', error);
+      setError(error instanceof Error ? error.message : '删除赛季失败');
+    } finally {
+      setIsDeletingSeasonId(null);
+    }
+  };
+
   const handleCreateBackup = async () => {
     setIsBackingUp(true);
     setError(null);
@@ -149,11 +189,15 @@ export const useSeasonBackupSettings = ({ setError, setSuccessMessage }: SystemF
     isRestoring,
     seasons,
     isUpdatingStatusId,
+    isRenamingSeasonId,
+    isDeletingSeasonId,
     setNewSeasonName,
     setNewSeasonType,
     loadBackups,
     handleCreateSeason,
     handleUpdateSeasonStatus,
+    handleRenameSeason,
+    handleDeleteSeason,
     handleCreateBackup,
     handleRestore,
   };

@@ -160,10 +160,14 @@ const SystemSettingsPage: React.FC = () => {
             isBackingUp={seasonBackup.isBackingUp}
             isRestoring={seasonBackup.isRestoring}
             isUpdatingStatusId={seasonBackup.isUpdatingStatusId}
+            isRenamingSeasonId={seasonBackup.isRenamingSeasonId}
+            isDeletingSeasonId={seasonBackup.isDeletingSeasonId}
             onNewSeasonNameChange={seasonBackup.setNewSeasonName}
             onNewSeasonTypeChange={seasonBackup.setNewSeasonType}
             onCreateSeason={seasonBackup.handleCreateSeason}
             onUpdateSeasonStatus={seasonBackup.handleUpdateSeasonStatus}
+            onRenameSeason={seasonBackup.handleRenameSeason}
+            onDeleteSeason={seasonBackup.handleDeleteSeason}
             onCreateBackup={seasonBackup.handleCreateBackup}
             onRestoreBackup={seasonBackup.handleRestore}
             onLoadBackups={seasonBackup.loadBackups}

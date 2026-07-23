@@ -40,6 +40,21 @@ export const seasonApi = {
     });
     return handleResponse<any>(response);
   },
+  rename: async (id: string, name: string): Promise<SeasonDTO> => {
+    const response = await fetch(`${BASE_URL}/seasons/${id}`, {
+      method: 'PATCH',
+      headers: createHeaders(),
+      body: JSON.stringify({ name }),
+    });
+    return handleResponse<SeasonDTO>(response);
+  },
+  delete: async (id: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}/seasons/${id}`, {
+      method: 'DELETE',
+      headers: createHeaders(),
+    });
+    return handleResponse<any>(response);
+  },
   getGroups: async (id: string): Promise<any[]> => {
     const response = await fetch(`${BASE_URL}/seasons/${id}/groups`, {
       method: 'GET',
