@@ -62,6 +62,9 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
     }),
+    new webpack.DefinePlugin({
+      ADMIN_API_BASE_URL: JSON.stringify(process.env.API_BASE_URL || ''),
+    }),
     new webpack.IgnorePlugin({
       resourceRegExp: /\.test\.ts$/,
     }),
